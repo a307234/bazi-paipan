@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="专业八字排盘 — 四柱、十神、藏干、纳音、神煞、格局、称骨、大运流年" />
+  <title>荣恩的周易学堂</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='none' stroke='%23333' stroke-width='2'/><path d='M50 2A48 48 0 0 1 50 98A24 24 0 0 1 50 50A24 24 0 0 0 50 2Z' fill='%23fff'/><path d='M50 2A48 48 0 0 0 50 98A24 24 0 0 0 50 50A24 24 0 0 1 50 2Z' fill='%23111'/><circle cx='50' cy='26' r='7' fill='%23111'/><circle cx='50' cy='74' r='7' fill='%23fff'/></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <div class="brand">
+        <span class="brand__mark">
+          <svg viewBox="0 0 100 100" class="brand__taiji">
+            <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M50 2 A48 48 0 0 1 50 98 A24 24 0 0 1 50 50 A24 24 0 0 0 50 2Z" fill="#fff"/>
+            <path d="M50 2 A48 48 0 0 0 50 98 A24 24 0 0 0 50 50 A24 24 0 0 1 50 2Z" fill="#111"/>
+            <circle cx="50" cy="26" r="7" fill="#111"/>
+            <circle cx="50" cy="74" r="7" fill="#fff"/>
+          </svg>
+        </span>
+        <div>
+          <h1 class="brand__title">荣恩的周易学堂</h1>
+          <p class="brand__sub">专业八字排盘系统</p>
+        </div>
+      </div>
+      <div class="theme-switcher" title="切换配色主题">
+        <button class="theme-btn theme-btn--classic" data-theme="classic" aria-label="经典黑灰"></button>
+        <button class="theme-btn theme-btn--hermes" data-theme="hermes" aria-label="爱马仕橙"></button>
+        <button class="theme-btn theme-btn--tiffany" data-theme="tiffany" aria-label="蒂芙尼蓝"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel panel--input" id="calendar">
+      <h2 class="panel__title">出生信息</h2>
+      <form class="birth-form" onsubmit="return false;">
+        <fieldset class="gender-field">
+          <legend>性别</legend>
+          <label><input type="radio" name="gender" value="1" checked /> 男</label>
+          <label><input type="radio" name="gender" value="0" /> 女</label>
+        </fieldset>
+
+        <div class="form-row">
+          <label class="form-label--wider">
+            <span>出生地</span>
+            <input id="birthplace" type="text" list="city-list" value="长沙" placeholder="输入城市名或选择" />
+            <datalist id="city-list"></datalist>
+          </label>
+          <label class="form-label--check">
+            <input id="use-true-solar" type="checkbox" checked />
+            <span>真太阳时校准</span>
+          </label>
+        </div>
+
+        <fieldset class="calendar-type-field">
+          <legend>历法</legend>
+          <label class="cal-type-label"><input type="radio" name="calendar-type" value="solar" checked /> 阳历（公历）</label>
+          <label class="cal-type-label"><input type="radio" name="calendar-type" value="lunar" /> 阴历（农历）</label>
+        </fieldset>
+
+        <div class="form-grid">
+          <label>年<input id="birth-year" type="number" min="1900" max="2100" /></label>
+          <label>月<input id="birth-month" type="number" min="1" max="12" /></label>
+          <label>日<input id="birth-day" type="number" min="1" max="31" /></label>
+          <label>时<input id="birth-hour" type="number" min="0" max="23" /></label>
+          <label>分<input id="birth-minute" type="number" min="0" max="59" value="0" /></label>
+        </div>
+        <button type="button" id="btn-paipan" class="btn-primary">开始排盘</button>
+      </form>
+
+      <h3 class="panel__subtitle">时辰</h3>
+      <div id="shichen-list" class="shichen-list"></div>
+
+      <h3 class="panel__subtitle">万年历</h3>
+      <div class="cal-toolbar">
+        <button type="button" id="cal-prev" aria-label="上月">‹</button>
+        <span id="cal-title"></span>
+        <button type="button" id="cal-next" aria-label="下月">›</button>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
+      <p class="cal-hint">点击日期可同步出生日；格子内为节气/农历与日干支</p>
+    </aside>
+
+    <section class="panel panel--result" id="paipan">
+      <p id="result-empty" class="result-empty">填写信息后点击「开始排盘」</p>
+      <div id="result-panel" hidden>
+        <header class="result-head">
+          <h2>八字排盘</h2>
+          <p id="meta-line" class="meta-line"></p>
+          <div id="extra-meta" class="extra-meta"></div>
+        </header>
+
+        <div id="pillar-cards" class="pillar-cards"></div>
+
+        <div class="table-wrap">
+          <table id="bazi-table" class="bazi-table" aria-label="四柱详表"></table>
+        </div>
+
+        <div id="dayun-section" class="dayun-section"></div>
+
+        <div class="detail-grid">
+          <article class="detail-card">
+            <h3>格局</h3>
+            <ul id="geju-list" class="detail-list"></ul>
+          </article>
+          <article class="detail-card">
+            <h3>神煞汇总</h3>
+            <div id="shensha-all" class="tag-row"></div>
+          </article>
+          <article class="detail-card">
+            <h3>天干留意</h3>
+            <ul id="gan-notes" class="detail-list"></ul>
+          </article>
+          <article class="detail-card">
+            <h3>地支留意</h3>
+            <ul id="zhi-notes" class="detail-list"></ul>
+          </article>
+          <article class="detail-card detail-card--wide">
+            <h3>称骨算命</h3>
+            <div id="chenggu-body" class="chenggu-body"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="about">
+    <p>历法与四柱计算基于节气换月；真太阳时基于出生地经度与均时差校准；晚子时（23点后）日柱用当日、时柱用次日。</p>
+    <p>神煞、格局、称骨为传统规则归纳，仅供文化学习参考。</p>
+    <p>最终解释权归荣恩个人所有。</p>
+  </footer>
+
+  <script src="lib/lunar.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/relations.js"></script>
+  <script src="js/shensha.js"></script>
+  <script src="js/geju.js"></script>
+  <script src="js/chenggu.js"></script>
+  <script src="js/bazi-engine.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+  // 初始化城市列表 datalist
+  (function () {
+    var dl = document.getElementById("city-list");
+    if (dl && window.BaziCities) {
+      BaziCities.CITIES.forEach(function (c) {
+        var opt = document.createElement("option");
+        opt.value = c.n;
+        opt.label = c.n + "（" + c.p + "）";
+        dl.appendChild(opt);
+      });
+    }
+  })();
+  </script>
+</body>
+</html>
