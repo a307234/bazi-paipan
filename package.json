@@ -1,0 +1,27 @@
+{
+  "name": "bazi-paipan",
+  "version": "1.0.0",
+  "description": "专业八字排盘静态站点，参考 [周易大学堂](https://zydx.top/) 与 [八字排盘](https://wnl.zydxt.top/index.php) 功能布局。",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a307234/bazi-paipan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/a307234/bazi-paipan/issues"
+  },
+  "homepage": "https://github.com/a307234/bazi-paipan#readme",
+  "devDependencies": {
+    "netlify-cli": "^26.0.2"
+  }
+}

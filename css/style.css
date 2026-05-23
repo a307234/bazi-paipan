@@ -227,38 +227,6 @@ a:hover { color: var(--accent-hot); }
 .shichen-btn__name { display: block; font-size: 0.8rem; font-weight: 600; }
 .shichen-btn__range { display: block; font-size: 0.62rem; opacity: 0.75; }
 
-/* Calendar */
-.cal-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
-
-.cal-toolbar button {
-  width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--bg-elevated); color: var(--text); cursor: pointer; font-size: 1rem;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
-}
-
-.cal-toolbar button:hover { background: var(--surface-hover); border-color: var(--accent); }
-#cal-title { font-weight: 600; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
-
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.cal-head { text-align: center; font-size: 0.6rem; color: var(--text-muted); padding: 0.15rem; }
-
-.cal-cell {
-  aspect-ratio: 1; min-height: 38px; padding: 1px;
-  border: 1px solid transparent; border-radius: 5px;
-  background: var(--bg-elevated); color: var(--text-muted); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-
-.cal-cell:hover:not(:disabled) { background: var(--hover-bg); border-color: var(--hover-border); color: var(--text); }
-.cal-cell--selected { background: var(--accent-dim) !important; border-color: var(--accent) !important; color: var(--accent-hot) !important; }
-.cal-cell--today { box-shadow: inset 0 0 0 1px var(--zhi); }
-.cal-cell--empty { visibility: hidden; pointer-events: none; }
-.cal-cell__term { font-size: 0.5rem; line-height: 1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); }
-.cal-cell__day { font-size: 0.78rem; font-weight: 700; color: inherit; }
-.cal-cell__gz { font-size: 0.5rem; opacity: 0.85; }
-.cal-hint { margin: 0.35rem 0 0; font-size: 0.62rem; color: var(--text-muted); }
-
 /* Result */
 .result-head h2 { margin: 0 0 0.35rem; font-family: var(--font-serif); font-size: 1.35rem; }
 .meta-line { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
@@ -452,3 +420,29 @@ a:hover { color: var(--accent-hot); }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition-duration: 0.01ms !important; } }
+
+/* Toast 提示 */
+.toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.18);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  color: var(--accent-hot);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.toast--show {
+  opacity: 1;
+}

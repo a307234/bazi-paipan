@@ -3,8 +3,6 @@
   var $$ = function (sel, el) { return [].slice.call((el || document).querySelectorAll(sel)); };
 
   var state = {
-    calYear: new Date().getFullYear(),
-    calMonth: new Date().getMonth() + 1,
     birth: {
       year: 1990,
       month: 5,
@@ -52,51 +50,6 @@
 
     var cityInfo = BaziCities.find(state.birthplace);
     state.birthplaceData = cityInfo || { name: state.birthplace, lng: 116.4, lat: 39.9 };
-  }
-
-  function renderCalendar() {
-    var data = BaziCalendar.buildMonth(state.calYear, state.calMonth);
-    $("#cal-title").textContent = data.year + " 年 " + data.month + " 月";
-    var grid = $("#cal-grid");
-    grid.innerHTML = "";
-
-    data.weekLabels.forEach(function (w) {
-      var h = document.createElement("div");
-      h.className = "cal-head";
-      h.textContent = w;
-      grid.appendChild(h);
-    });
-
-    data.cells.forEach(function (cell) {
-      var el = document.createElement("button");
-      el.type = "button";
-      el.className = "cal-cell";
-      if (cell.empty) {
-        el.classList.add("cal-cell--empty");
-        el.disabled = true;
-      } else {
-        var top = cell.jieqi || cell.lunarShort;
-        var isSel =
-          cell.year === state.birth.year &&
-          cell.month === state.birth.month &&
-          cell.day === state.birth.day;
-        if (cell.isToday) el.classList.add("cal-cell--today");
-        if (isSel) el.classList.add("cal-cell--selected");
-        el.innerHTML =
-          '<span class="cal-cell__term">' + top + '</span>' +
-          '<span class="cal-cell__day">' + pad(cell.day) + '</span>' +
-          '<span class="cal-cell__gz">' + cell.rgz + '</span>';
-        el.addEventListener("click", function () {
-          state.birth.year = cell.year;
-          state.birth.month = cell.month;
-          state.birth.day = cell.day;
-          syncInputsFromState();
-          renderCalendar();
-          renderShichen();
-        });
-      }
-      grid.appendChild(el);
-    });
   }
 
   function renderShichen() {
@@ -270,6 +223,23 @@
       '<span>身宫 ' + result.meta.shengong + '</span>';
   }
 
+  function showToast(msg, duration) {
+    duration = duration || 3000;
+    var toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    // 强制回流后添加 show 类触发淡入
+    void toast.offsetWidth;
+    toast.classList.add("toast--show");
+    setTimeout(function () {
+      toast.classList.remove("toast--show");
+      setTimeout(function () {
+        document.body.removeChild(toast);
+      }, 400);
+    }, duration);
+  }
+
   function doPaipan() {
     readInputs();
     try {
@@ -290,6 +260,7 @@
       renderExtras(result);
       $("#result-empty").hidden = true;
       $("#result-panel").hidden = false;
+      showToast("排盘完成、请下滑查看~");
     } catch (e) {
       console.error(e);
       $("#result-empty").hidden = false;
@@ -321,56 +292,23 @@
     state.birth.year = now.getFullYear() - 35;
     state.birth.month = now.getMonth() + 1;
     state.birth.day = now.getDate();
-    state.calYear = state.birth.year;
-    state.calMonth = state.birth.month;
-
     if (BaziCities && BaziCities.find) {
       var defCity = BaziCities.find("长沙");
       if (defCity) state.birthplaceData = defCity;
     }
 
     syncInputsFromState();
-    renderCalendar();
     renderShichen();
-
-    $("#cal-prev").addEventListener("click", function () {
-      state.calMonth--;
-      if (state.calMonth < 1) {
-        state.calMonth = 12;
-        state.calYear--;
-      }
-      renderCalendar();
-    });
-    $("#cal-next").addEventListener("click", function () {
-      state.calMonth++;
-      if (state.calMonth > 12) {
-        state.calMonth = 1;
-        state.calYear++;
-      }
-      renderCalendar();
-    });
 
     $("#btn-paipan").addEventListener("click", doPaipan);
 
     ["birth-year", "birth-month", "birth-day", "birth-hour", "birth-minute"].forEach(function (id) {
       $("#" + id).addEventListener("input", function () {
         readInputs();
-        if (id === "birth-year" || id === "birth-month" || id === "birth-day") {
-          if (state.calYear !== state.birth.year || state.calMonth !== state.birth.month) {
-            state.calYear = state.birth.year;
-            state.calMonth = state.birth.month;
-            renderCalendar();
-          }
-        }
         renderShichen();
       });
       $("#" + id).addEventListener("change", function () {
         readInputs();
-        if (id === "birth-year" || id === "birth-month" || id === "birth-day") {
-          state.calYear = state.birth.year;
-          state.calMonth = state.birth.month;
-          renderCalendar();
-        }
         renderShichen();
       });
     });
