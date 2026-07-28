@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="专业八字排盘 — 四柱、十神、藏干、纳音、神煞、格局、称骨、大运流年" />
+  <meta name="description" content="专业八字排盘 — 四柱、十神、藏干、纳音、神煞、格局、称骨、大运流年、身势喜用" />
   <title>荣恩的周易学堂</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='none' stroke='%23333' stroke-width='2'/><path d='M50 2A48 48 0 0 1 50 98A24 24 0 0 1 50 50A24 24 0 0 0 50 2Z' fill='%23fff'/><path d='M50 2A48 48 0 0 0 50 98A24 24 0 0 0 50 50A24 24 0 0 1 50 2Z' fill='%23111'/><circle cx='50' cy='26' r='7' fill='%23111'/><circle cx='50' cy='74' r='7' fill='%23fff'/></svg>" />
   <link rel="stylesheet" href="css/style.css" />
@@ -72,9 +72,6 @@
         <button type="button" id="btn-paipan" class="btn-primary">开始排盘</button>
       </form>
 
-      <h3 class="panel__subtitle">时辰</h3>
-      <div id="shichen-list" class="shichen-list"></div>
-
     </aside>
 
     <section class="panel panel--result" id="paipan">
@@ -92,28 +89,37 @@
           <table id="bazi-table" class="bazi-table" aria-label="四柱详表"></table>
         </div>
 
-        <div id="dayun-section" class="dayun-section"></div>
+        <div class="analysis-stack" id="analysis-stack">
+          <article class="analysis-block" id="shengshi-block" data-open="true">
+            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="shengshi-body">
+              <h3 class="analysis-block__title">身势强弱</h3>
+              <span class="analysis-block__chevron" aria-hidden="true"></span>
+            </button>
+            <div id="shengshi-body" class="analysis-block__body"></div>
+          </article>
 
-        <div class="detail-grid">
-          <article class="detail-card">
-            <h3>格局</h3>
-            <ul id="geju-list" class="detail-list"></ul>
+          <article class="analysis-block" id="dayun-block" data-open="true">
+            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="dayun-body">
+              <h3 class="analysis-block__title">大运流年</h3>
+              <span class="analysis-block__chevron" aria-hidden="true"></span>
+            </button>
+            <div id="dayun-body" class="analysis-block__body"></div>
           </article>
-          <article class="detail-card">
-            <h3>神煞汇总</h3>
-            <div id="shensha-all" class="tag-row"></div>
+
+          <article class="analysis-block" id="geju-block" data-open="true">
+            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="geju-panel">
+              <h3 class="analysis-block__title">命格综评</h3>
+              <span class="analysis-block__chevron" aria-hidden="true"></span>
+            </button>
+            <div id="geju-panel" class="analysis-block__body geju-panel"></div>
           </article>
-          <article class="detail-card">
-            <h3>天干留意</h3>
-            <ul id="gan-notes" class="detail-list"></ul>
-          </article>
-          <article class="detail-card">
-            <h3>地支留意</h3>
-            <ul id="zhi-notes" class="detail-list"></ul>
-          </article>
-          <article class="detail-card detail-card--wide">
-            <h3>称骨算命</h3>
-            <div id="chenggu-body" class="chenggu-body"></div>
+
+          <article class="analysis-block" id="chenggu-block" data-open="true">
+            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="chenggu-body">
+              <h3 class="analysis-block__title">称骨算命</h3>
+              <span class="analysis-block__chevron" aria-hidden="true"></span>
+            </button>
+            <div id="chenggu-body" class="analysis-block__body chenggu-body"></div>
           </article>
         </div>
       </div>
@@ -122,16 +128,16 @@
 
   <footer class="site-footer" id="about">
     <p>历法与四柱计算基于节气换月；真太阳时基于出生地经度与均时差校准；晚子时（23点后）日柱用当日、时柱用次日。</p>
-    <p>神煞、格局、称骨为传统规则归纳，仅供文化学习参考。</p>
+    <p>身势强弱按传统旺衰（得令/得地/得势/得生）与扶抑取用；神煞、格局、称骨为传统规则归纳，仅供文化学习参考，非命理咨询。</p>
     <p>最终解释权归荣恩个人所有。</p>
   </footer>
 
   <script src="lib/lunar.js"></script>
   <script src="js/cities.js"></script>
   <script src="js/calendar.js"></script>
-  <script src="js/relations.js"></script>
   <script src="js/shensha.js"></script>
   <script src="js/geju.js"></script>
+  <script src="js/shengshi.js"></script>
   <script src="js/chenggu.js"></script>
   <script src="js/bazi-engine.js"></script>
   <script src="js/app.js"></script>

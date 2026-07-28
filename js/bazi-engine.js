@@ -225,25 +225,32 @@
       pillars[3].label = "时柱(晚子)";
 
       // 重新计算时柱十神：日干对时干的关系
-      var ssTable = SHISHEN_TABLE[dayGan] || {};
+      var dayGanForSs = ec.getDayGan();
+      var ssTable = SHISHEN_TABLE[dayGanForSs] || {};
       pillars[3].shishenGan = ssTable[timeGan] || "";
     }
-
-    var gans = pillars.map(function(p) { return p.gan; });
-    var zhis = pillars.map(function(p) { return p.zhi; });
 
     var shensha = Shensha.compute(ec);
     pillars.forEach(function(p, i) {
       p.shensha = shensha.byPillar[i];
     });
 
-    var geju = Geju.analyze(ec);
-    var ganNotes = Relations.analyzeGan(gans);
-    var zhiNotes = Relations.analyzeZhi(zhis);
-    var chenggu = Chenggu.compute(lunar, ec, gender);
-
     var dayGan = ec.getDayGan();
     var dayZhi = ec.getDayZhi();
+    var shengshi = (typeof Shengshi !== "undefined" && Shengshi.analyze)
+      ? Shengshi.analyze({
+          dayGan: dayGan,
+          monthZhi: ec.getMonthZhi(),
+          pillars: pillars
+        })
+      : null;
+
+    var geju = Geju.analyze(ec, {
+      pillars: pillars,
+      shensha: shensha,
+      shengshi: shengshi
+    });
+    var chenggu = Chenggu.compute(lunar, ec, gender);
     var genderText = gender === 1 ? "男（乾造）" : "女（坤造）";
     var shichen = BaziCalendar.hourToShichen(finalHour, finalMinute);
 
@@ -302,8 +309,9 @@
       pillars: pillars,
       shenshaAll: shensha.all,
       geju: geju,
-      ganNotes: ganNotes,
-      zhiNotes: zhiNotes,
+      shengshi: shengshi,
+      ganNotes: [],
+      zhiNotes: [],
       chenggu: chenggu,
       yun: {
         startYear: yun.getStartYear(),

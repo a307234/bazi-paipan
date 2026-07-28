@@ -15,7 +15,6 @@
     birthplace: "长沙",
     birthplaceData: null,
     useTrueSolar: true,
-    selectedShichen: null,
     result: null,
   };
 
@@ -50,27 +49,6 @@
 
     var cityInfo = BaziCities.find(state.birthplace);
     state.birthplaceData = cityInfo || { name: state.birthplace, lng: 116.4, lat: 39.9 };
-  }
-
-  function renderShichen() {
-    var wrap = $("#shichen-list");
-    wrap.innerHTML = "";
-    var sc = BaziCalendar.hourToShichen(state.birth.hour, state.birth.minute);
-    BaziCalendar.SHICHEN.forEach(function (item) {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "shichen-btn";
-      if (item.zhi === sc.zhi) btn.classList.add("shichen-btn--active");
-      btn.innerHTML = '<span class="shichen-btn__name">' + item.name + '</span><span class="shichen-btn__range">' + item.range + '</span>';
-      btn.addEventListener("click", function () {
-        state.birth.hour = item.hour;
-        state.birth.minute = 0;
-        $("#birth-hour").value = item.hour;
-        $("#birth-minute").value = 0;
-        renderShichen();
-      });
-      wrap.appendChild(btn);
-    });
   }
 
   var WUXING_COLOR = {
@@ -147,20 +125,122 @@
       .join("");
   }
 
+  function renderShengshi(result) {
+    var wrap = $("#shengshi-body");
+    if (!wrap) return;
+    var ss = result.shengshi;
+    if (!ss) {
+      wrap.innerHTML = "";
+      return;
+    }
+
+    var levelClass = {
+      "身强": "shengshi-badge--strong",
+      "偏强": "shengshi-badge--strongish",
+      "中和": "shengshi-badge--mid",
+      "偏弱": "shengshi-badge--weakish",
+      "身弱": "shengshi-badge--weak"
+    }[ss.level] || "shengshi-badge--mid";
+
+    var flagMap = [
+      { key: "deLing", label: "得令" },
+      { key: "deDi", label: "得地" },
+      { key: "deShi", label: "得势" },
+      { key: "deSheng", label: "得生" }
+    ];
+    var flagHtml = flagMap.map(function (f) {
+      var on = ss.flags && ss.flags[f.key];
+      return '<span class="shengshi-flag' + (on ? " is-on" : "") + '">' + f.label + (on ? "✓" : "✗") + '</span>';
+    }).join("");
+
+    var factorHtml = (ss.factors || []).map(function (f) {
+      var wPct = Math.round(f.weight * 100);
+      var s = Math.round(f.score);
+      return (
+        '<div class="factor-row" title="' + (f.detail || "").replace(/"/g, "&quot;") + '">' +
+          '<div class="factor-head">' +
+            '<span class="factor-name">' + f.name + '</span>' +
+            '<span class="factor-meta">权' + wPct + '% · ' + s + '分</span>' +
+          '</div>' +
+          '<div class="wx-bar-track"><div class="wx-bar-fill" style="width:' + s + '%;background:rgba(var(--accent-rgb),0.85)"></div></div>' +
+          '<p class="factor-detail">' + (f.detail || "") + '</p>' +
+        '</div>'
+      );
+    }).join("");
+
+    var barHtml = (window.Shengshi && Shengshi.WX_ORDER ? Shengshi.WX_ORDER : ["木", "火", "土", "金", "水"]).map(function (wx) {
+      var pct = ss.percent[wx] || 0;
+      return (
+        '<div class="wx-bar-row">' +
+          '<span class="wx-bar-label" style="color:' + (WUXING_COLOR[wx] || "inherit") + '">' + wx + '</span>' +
+          '<div class="wx-bar-track"><div class="wx-bar-fill" style="width:' + pct + '%;background:' + (WUXING_COLOR[wx] || "#888") + '"></div></div>' +
+          '<span class="wx-bar-pct">' + pct + '%</span>' +
+        '</div>'
+      );
+    }).join("");
+
+    var xiHtml = ss.xiYong.map(function (w) {
+      return '<span class="tag tag--xi">' + w + '</span>';
+    }).join("");
+    var jiHtml = ss.jiShen.map(function (w) {
+      return '<span class="tag tag--ji">' + w + '</span>';
+    }).join("");
+
+    wrap.innerHTML =
+      '<div class="shengshi-card">' +
+        '<div class="shengshi-top">' +
+          '<span class="shengshi-badge ' + levelClass + '">' + ss.level + '</span>' +
+          (ss.total != null ? '<span class="shengshi-total">综合 ' + ss.total + ' 分</span>' : '') +
+          '<div class="shengshi-flags">' + flagHtml + '</div>' +
+        '</div>' +
+        '<p class="shengshi-summary">日主 <strong style="color:' + ganColor(ss.dayGan) + '">' + ss.dayGan + ss.dayWx + '</strong> · ' + ss.summary + '</p>' +
+        '<div class="factor-bars">' + factorHtml + '</div>' +
+        '<h4 class="shengshi-sub">五行力量（参考）</h4>' +
+        '<div class="wx-bars">' + barHtml + '</div>' +
+        '<div class="shengshi-yong">' +
+          '<div class="shengshi-yong-col">' +
+            '<span class="shengshi-yong-label">喜用神</span>' +
+            '<div class="tag-row">' + xiHtml + '</div>' +
+            '<p class="shengshi-yong-hint">' + (ss.xiCats || []).join(" · ") + '</p>' +
+          '</div>' +
+          '<div class="shengshi-yong-col">' +
+            '<span class="shengshi-yong-label shengshi-yong-label--ji">忌神</span>' +
+            '<div class="tag-row">' + jiHtml + '</div>' +
+            '<p class="shengshi-yong-hint">' + (ss.jiCats || []).join(" · ") + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<ul class="shengshi-lines">' + ss.lines.map(function (t) { return "<li>" + t + "</li>"; }).join("") + '</ul>' +
+      '</div>';
+  }
+
   function renderDaYun(result) {
     var yun = result.yun;
-    var wrap = $("#dayun-section");
+    var wrap = $("#dayun-body");
+    if (!wrap) return;
     if (!yun || !yun.daYun.length) {
       wrap.innerHTML = "";
       return;
     }
 
+    var startTip = "出生后 " + yun.startYear + "年" + yun.startMonth + "月" + yun.startDay + "日起运（" + (yun.isForward ? "顺排" : "逆排") + "）";
+    var curLn = yun.liuNianCurrent;
+    var curTip = curLn
+      ? (' · 今年 ' + curLn.year + ' ' + curLn.ganzhi + (curLn.desc ? '：' + curLn.desc : ''))
+      : "";
+
     var h =
-      '<h3 class="yun-title">大运流年</h3>' +
-      '<p class="yun-start">起运：' + yun.startYear + '年' + yun.startMonth + '月' + yun.startDay + '日（' + (yun.isForward ? '顺排' : '逆排') + '）</p>' +
+      '<p class="yun-start">' + startTip + curTip + '</p>' +
       '<div class="dayun-table-wrap"><table class="dayun-table"><tbody>';
 
     yun.daYun.forEach(function (dy) {
+      if (!dy.ganzhi && dy.index === 0) {
+        h += '<tr class="dayun-before">' +
+          '<td class="dayun-age">' + dy.startAge + '–' + dy.endAge + '岁</td>' +
+          '<td class="dayun-year">' + dy.startYear + '–' + dy.endYear + '</td>' +
+          '<td class="dayun-gz">起运前</td>' +
+          '<td class="dayun-liunian"><span class="dayun-muted">童限 · 尚未行大运</span></td></tr>';
+        return;
+      }
       var cls = dy.isCurrent ? ' class="dayun-current"' : '';
       h += '<tr' + cls + '>' +
         '<td class="dayun-age">' + dy.startAge + '–' + dy.endAge + '岁</td>' +
@@ -205,9 +285,7 @@
 
     $("#meta-line").textContent = metaParts.join(" · ");
 
-    $("#geju-list").innerHTML = result.geju.map(function (t) { return "<li>" + t + "</li>"; }).join("");
-    $("#gan-notes").innerHTML = result.ganNotes.map(function (t) { return "<li>" + t + "</li>"; }).join("");
-    $("#zhi-notes").innerHTML = result.zhiNotes.map(function (t) { return "<li>" + t + "</li>"; }).join("");
+    renderGeju(result);
 
     var cg = result.chenggu;
     $("#chenggu-body").innerHTML =
@@ -215,12 +293,178 @@
       '<ul class="chenggu-parts">' + cg.parts.map(function (p) { return "<li>" + p.label + " " + p.value + (p.gz ? "（" + p.gz + "）" : "") + (p.note ? " · " + p.note : "") + "</li>"; }).join("") + '</ul>' +
       '<p class="chenggu-poem">' + cg.poem + '</p>';
 
-    $("#shensha-all").innerHTML = result.shenshaAll.map(function (s) { return '<span class="tag tag--accent">' + s + '</span>'; }).join("");
-
     $("#extra-meta").innerHTML =
       '<span>胎元 ' + result.meta.taiyuan + '</span>' +
       '<span>命宫 ' + result.meta.minggong + '</span>' +
       '<span>身宫 ' + result.meta.shengong + '</span>';
+  }
+
+  function renderGeju(result) {
+    var panel = $("#geju-panel");
+    if (!panel) return;
+    var g = result.geju;
+    if (!g) {
+      panel.innerHTML = "";
+      return;
+    }
+
+    // 新结构：sections；旧结构：lines 数组
+    if (g.sections && g.sections.length) {
+      var wx = g.wuxing || {};
+      var wxAttr = (g.dayGan || "") + (g.dayWx || "");
+      var wxHead = "";
+      if (wxAttr || (wx.items && wx.items.length)) {
+        var chipHtml = (wx.items || []).map(function (it) {
+          var cls = it.has ? "wx-chip wx-chip--has" : "wx-chip wx-chip--miss";
+          return '<span class="' + cls + '">' + it.wx + '<em>' + it.flag + '</em></span>';
+        }).join("");
+        wxHead =
+          '<div class="geju-wx-block">' +
+            '<div class="geju-wx">' +
+              '<span class="geju-wx-label">命主五行</span>' +
+              (wxAttr ? '<span class="geju-wx-value">' + wxAttr + '</span>' : '') +
+              (wx.attrText ? '<span class="geju-wx-attr">属性：' + wx.attrText + '</span>' : '') +
+            '</div>' +
+            (chipHtml ? '<div class="wx-chip-row">' + chipHtml + '</div>' : '') +
+            (wx.summary ? '<p class="geju-wx-summary">' + wx.summary + '</p>' : '') +
+            '<p class="geju-wx-hint">数字为天干与地支藏干出现次数；「缺」表示盘中未出现该五行。</p>' +
+          '</div>';
+      }
+      panel.innerHTML =
+        '<div class="geju-head">' + wxHead + '</div>' +
+        g.sections.map(function (sec) {
+          // 八字格局：具体命格 + 有利 / 不利
+          if (sec.title === "八字格局" && g.geDetail) {
+            var gd = g.geDetail;
+            return (
+              '<div class="geju-sec">' +
+                '<h4 class="geju-sec-title">' + sec.title + '</h4>' +
+                '<div class="sha-card">' +
+                  '<div class="sha-card__name">' +
+                    '<span class="geju-name geju-name--inline">' + (g.name || "命格") + '</span>' +
+                  '</div>' +
+                  (g.mean ? '<p class="geju-mean geju-mean--in">' + g.mean + '</p>' : '') +
+                  gd.howDetail.map(function (t) { return '<p>' + t + '</p>'; }).join("") +
+                '</div>' +
+                '<div class="sha-card sha-card--xi">' +
+                  '<div class="sha-card__name">有利因素 <span class="sha-badge sha-badge--xi">利</span></div>' +
+                  '<ul class="geju-factor-list">' +
+                    gd.pros.map(function (t) { return '<li>' + t + '</li>'; }).join("") +
+                  '</ul>' +
+                '</div>' +
+                '<div class="sha-card sha-card--ji">' +
+                  '<div class="sha-card__name">不利因素 <span class="sha-badge sha-badge--ji">慎</span></div>' +
+                  '<ul class="geju-factor-list">' +
+                    gd.cons.map(function (t) { return '<li>' + t + '</li>'; }).join("") +
+                  '</ul>' +
+                '</div>' +
+              '</div>'
+            );
+          }
+
+          // 适宜参考：行业 / 人 / 颜色 / 数字 / 星座
+          if (sec.title === "适宜参考" && g.yiYi && g.yiYi.rows) {
+            return (
+              '<div class="geju-sec">' +
+                '<h4 class="geju-sec-title">' + sec.title + '</h4>' +
+                '<p class="geju-sha-lead">按格局与身势喜用综合参考；属文化学习，非择偶或就业硬标准。</p>' +
+                g.yiYi.rows.map(function (row) {
+                  if (row.plain) {
+                    return (
+                      '<div class="yiyi-row">' +
+                        '<div class="yiyi-label">' + row.label + '</div>' +
+                        '<ul class="geju-factor-list">' +
+                          row.items.map(function (t) { return '<li>' + t + '</li>'; }).join("") +
+                        '</ul>' +
+                      '</div>'
+                    );
+                  }
+                  return (
+                    '<div class="yiyi-row">' +
+                      '<div class="yiyi-label">' + row.label + '</div>' +
+                      '<div class="tag-row">' +
+                        row.items.map(function (t) {
+                          return '<span class="tag tag--xi">' + t + '</span>';
+                        }).join("") +
+                      '</div>' +
+                    '</div>'
+                  );
+                }).join("") +
+                '<p class="shengshi-yong-hint">大运流年会微调喜忌，不必刻板对号入座。</p>' +
+              '</div>'
+            );
+          }
+
+          var cardItems = null;
+          var lead = "";
+          var foot = "";
+          if (sec.title === "十神情况" && g.shishenDetail && g.shishenDetail.items && g.shishenDetail.items.length) {
+            cardItems = g.shishenDetail.items;
+            lead = "每个十神看三句：怎么来的 → 影响什么 → 怎么用/怎么化。标题旁「喜/忌」按当前身势标注。";
+            foot = "喜忌随身势而变；合格局、大运看，不宜单断吉凶。";
+          } else if (sec.title === "神煞情况" && g.shensha && g.shensha.items && g.shensha.items.length) {
+            cardItems = g.shensha.items;
+            lead = "来源写「怎么产生」，再看影响。吉神只写用法，凶神只写化解；平神用法与化解分列。";
+            foot = "神煞是辅助标签，以身势、格局、大运为主，不必单断吉凶。";
+          }
+          if (cardItems) {
+            var isSha = sec.title === "神煞情况";
+            return (
+              '<div class="geju-sec">' +
+                '<h4 class="geju-sec-title">' + sec.title + '</h4>' +
+                '<p class="geju-sha-lead">' + lead + '</p>' +
+                cardItems.map(function (it) {
+                  var badge = "";
+                  var cardMod = "";
+                  if (it.flag) {
+                    var tone = (it.flag === "喜" || it.flag === "吉")
+                      ? "xi"
+                      : ((it.flag === "忌" || it.flag === "凶") ? "ji" : "ping");
+                    badge = '<span class="sha-badge sha-badge--' + tone + '">' + it.flag + '</span>';
+                    if (it.wx) badge += '<span class="sha-badge-wx">' + it.wx + '</span>';
+                    cardMod = " sha-card--" + tone;
+                  }
+                  var actionHtml = "";
+                  if (isSha) {
+                    if (it.flag === "平") {
+                      if (it.usage) actionHtml += '<p><b>用法</b>：' + it.usage + '</p>';
+                      if (it.resolve) actionHtml += '<p><b>化解</b>：' + it.resolve + '</p>';
+                    } else if (it.action) {
+                      actionHtml = '<p><b>' + it.actionLabel + '</b>：' + it.action + '</p>';
+                    }
+                  } else {
+                    actionHtml = '<p><b>化解/用法</b>：' + it.resolve + '</p>';
+                  }
+                  return (
+                    '<div class="sha-card' + cardMod + '">' +
+                      '<div class="sha-card__name">' + it.name + badge + '</div>' +
+                      (it.flagNote ? '<p class="sha-card__flag">' + it.flagNote + '</p>' : '') +
+                      '<p><b>来源</b>：' + it.from + '</p>' +
+                      '<p><b>影响</b>：' + it.effect + '</p>' +
+                      actionHtml +
+                    '</div>'
+                  );
+                }).join("") +
+                '<p class="shengshi-yong-hint">' + foot + '</p>' +
+              '</div>'
+            );
+          }
+          return (
+            '<div class="geju-sec">' +
+              '<h4 class="geju-sec-title">' + sec.title + '</h4>' +
+              '<ul class="detail-list detail-list--plain">' +
+                sec.body.map(function (t) { return "<li>" + t + "</li>"; }).join("") +
+              '</ul>' +
+            '</div>'
+          );
+        }).join("");
+      return;
+    }
+
+    var lines = Array.isArray(g) ? g : (g.lines || []);
+    panel.innerHTML = '<ul class="detail-list detail-list--plain">' +
+      lines.map(function (t) { return "<li>" + t + "</li>"; }).join("") +
+      '</ul>';
   }
 
   function showToast(msg, duration) {
@@ -240,6 +484,22 @@
     }, duration);
   }
 
+  function bindAnalysisBlocks() {
+    var stack = $("#analysis-stack");
+    if (!stack || stack._bound) return;
+    stack._bound = true;
+    stack.addEventListener("click", function (e) {
+      var head = e.target.closest(".analysis-block__head");
+      if (!head || !stack.contains(head)) return;
+      var block = head.closest(".analysis-block");
+      if (!block) return;
+      var open = block.getAttribute("data-open") !== "false";
+      var next = !open;
+      block.setAttribute("data-open", next ? "true" : "false");
+      head.setAttribute("aria-expanded", next ? "true" : "false");
+    });
+  }
+
   function doPaipan() {
     readInputs();
     try {
@@ -256,6 +516,7 @@
       });
       state.result = result;
       renderBaziTable(result);
+      renderShengshi(result);
       renderDaYun(result);
       renderExtras(result);
       $("#result-empty").hidden = true;
@@ -298,18 +559,16 @@
     }
 
     syncInputsFromState();
-    renderShichen();
+    bindAnalysisBlocks();
 
     $("#btn-paipan").addEventListener("click", doPaipan);
 
     ["birth-year", "birth-month", "birth-day", "birth-hour", "birth-minute"].forEach(function (id) {
       $("#" + id).addEventListener("input", function () {
         readInputs();
-        renderShichen();
       });
       $("#" + id).addEventListener("change", function () {
         readInputs();
-        renderShichen();
       });
     });
 
