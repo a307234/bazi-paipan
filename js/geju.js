@@ -668,11 +668,22 @@
 
   function describeShiShen(ssInfo, shengshi, dayGan, dayWx) {
     var side = strengthSideOf(shengshi);
-    var level = (shengshi && shengshi.level) || "";
     var names = Object.keys(ssInfo.counts || {})
       .filter(function (k) { return k !== "日主"; })
       .sort(function (a, b) { return ssInfo.counts[b] - ssInfo.counts[a]; })
       .slice(0, 8);
+
+    function stripAction(s) {
+      return String(s || "").replace(/^(用法|化解)[：:]\s*/, "");
+    }
+    function pickByPrefix(map, preferSide, prefix) {
+      var order = [preferSide, "中", "弱", "强"];
+      for (var i = 0; i < order.length; i++) {
+        var t = map && map[order[i]];
+        if (t && t.indexOf(prefix) === 0) return stripAction(t);
+      }
+      return stripAction((map && (map[preferSide] || map["中"])) || "");
+    }
 
     var items = names.map(function (name) {
       var d = SHISHEN_DETAIL[name];
@@ -684,30 +695,43 @@
       var effect = d && d.effect
         ? (d.effect[side] || d.effect["中"])
         : ((SS_PLAIN[name] || "作性格与际遇参考") + "。");
-      var resolve = d && d.resolve
-        ? (d.resolve[side] || d.resolve["中"])
-        : "结合身势喜用与实际情况看待。";
-      var flagNote = "";
-      if (mark.flag === "喜") {
-        flagNote = "相对当前身势为喜用（" + (mark.wx || mark.group) + "），宜用、宜走。";
-      } else if (mark.flag === "忌") {
-        flagNote = "相对当前身势为忌神（" + (mark.wx || mark.group) + "），宜制化、宜谨慎。";
-      } else {
-        flagNote = "相对当前身势偏中性，过旺再论喜忌。";
-      }
-      return {
+      var rmap = (d && d.resolve) || {};
+      var item = {
         name: name,
         flag: mark.flag,
         wx: mark.wx,
         group: mark.group,
         from: from,
         effect: effect,
-        resolve: resolve,
-        flagNote: flagNote
+        usage: "",
+        resolve: "",
+        actionLabel: "",
+        action: ""
       };
+      if (mark.flag === "喜") {
+        item.actionLabel = "用法";
+        item.action = pickByPrefix(rmap, side, "用法");
+        item.usage = item.action;
+      } else if (mark.flag === "忌") {
+        item.actionLabel = "化解";
+        item.action = pickByPrefix(rmap, side, "化解");
+        item.resolve = item.action;
+      } else {
+        item.usage = pickByPrefix(rmap, side, "用法");
+        item.resolve = pickByPrefix(rmap, side, "化解");
+        // 若两侧文案相同（只取到同一句），只留一条
+        if (item.usage && item.usage === item.resolve) {
+          var raw = rmap[side] || rmap["中"] || "";
+          if (raw.indexOf("化解") === 0) {
+            item.usage = "";
+          } else {
+            item.resolve = "";
+          }
+        }
+      }
+      return item;
     });
 
-    // 展示顺序：喜 → 忌 → 平，同档按原权重
     var order = { 喜: 0, 忌: 1, 平: 2 };
     items.sort(function (a, b) {
       var da = order[a.flag] != null ? order[a.flag] : 9;
@@ -716,27 +740,18 @@
       return (ssInfo.counts[b.name] || 0) - (ssInfo.counts[a.name] || 0);
     });
 
-    var lines = [
-      "【读法】每个十神看三句：怎么来的 → 影响什么 → 怎么用/怎么化；标题旁「喜/忌」按当前身势标注。",
-      "日主" + dayGan + dayWx + "为参照；同我＝比劫，生我＝印，我生＝食伤，克我＝官杀，我克＝财。"
-    ];
-    if (level) {
-      lines.push(
-        "当前身势「" + level + "」——喜" + ((shengshi.xiCats || []).join("、") || (shengshi.xiYong || []).join("、")) +
-        "，忌" + ((shengshi.jiCats || []).join("、") || (shengshi.jiShen || []).join("、")) + "。"
-      );
-    }
+    var lines = [];
     items.forEach(function (it) {
       lines.push("【" + it.name + "·" + it.flag + "】");
       lines.push("来源：" + it.from);
       lines.push("影响：" + it.effect);
-      lines.push("化解/用法：" + it.resolve);
-      lines.push(it.flagNote);
+      if (it.flag === "平") {
+        if (it.usage) lines.push("用法：" + it.usage);
+        if (it.resolve) lines.push("化解：" + it.resolve);
+      } else if (it.action) {
+        lines.push(it.actionLabel + "：" + it.action);
+      }
     });
-    if (ssInfo.groups && ssInfo.groups.length) {
-      lines.push("分布约数：" + ssInfo.groups.map(function (g) { return g.name + g.n; }).join("、") + "。");
-    }
-    lines.push("说明：喜忌随身势而变；合格局、大运看，不宜单断吉凶。");
 
     return { tags: names, lines: lines, items: items, side: side };
   }
@@ -851,7 +866,7 @@
       "往来对象宜带喜用气质（稳、助、生扶），少长期纠缠忌神过重之人"
     ];
     if (ji.length) {
-      people.push("少与「" + ji.map(function (w) { return WX_ATTR[w] || w; }).join("、") + "」过旺、相处耗神者为伍（非绝对排斥）");
+      people.push("少与「" + ji.map(function (w) { return WX_ATTR[w] || w; }).join("、") + "」过旺、相处耗神者为伍");
     }
 
     var rows = [
@@ -864,13 +879,11 @@
     ];
 
     var body = [
-      "按格局与当前身势喜用（" + xi.join("、") + "）综合参考：",
       "适宜行业：" + industries.join("、") + "。",
       people[0] + "；" + people[1] + "。",
       "适宜颜色：" + colors.join("、") + "。",
       "适宜数字：" + numbers.join("、") + "。",
-      "适宜星座：" + zodiac.join("、") + "。",
-      "说明：属文化参考，非择偶/就业硬标准；大运流年会微调。"
+      "适宜星座：" + zodiac.join("、") + "。"
     ];
 
     return {
@@ -909,17 +922,11 @@
         resolve: "结合身势与实际情况防范其短。"
       };
       var flag = d.kind || "平";
-      var flagNote = flag === "吉"
-        ? "吉神：只看用法，主动借力。"
-        : (flag === "凶"
-          ? "凶神：只看化解，重在防范，不必恐慌。"
-          : "平神：用法与化解分看，用得好是助力。");
       var item = {
         name: name,
         flag: flag,
         from: d.from,
         effect: d.effect,
-        flagNote: flagNote,
         usage: "",
         resolve: "",
         actionLabel: "",
@@ -936,8 +943,6 @@
       } else {
         item.usage = d.usage || "";
         item.resolve = d.resolve || "";
-        item.actionLabel = "";
-        item.action = "";
       }
       return item;
     });
@@ -949,7 +954,7 @@
       return da - db;
     });
 
-    var lines = ["【读法】来源看「怎么产生」，再看影响；吉神只写用法，凶神只写化解。"];
+    var lines = [];
     items.forEach(function (it) {
       lines.push("【" + it.name + "·" + it.flag + "】");
       lines.push("来源：" + it.from);
@@ -960,12 +965,10 @@
       } else if (it.action) {
         lines.push(it.actionLabel + "：" + it.action);
       }
-      lines.push(it.flagNote);
     });
     if (clean.length > focus.length) {
-      lines.push("另有：" + clean.slice(focus.length).join("、") + "（规则同上看待，不逐条展开）。");
+      lines.push("另有：" + clean.slice(focus.length).join("、"));
     }
-    lines.push("说明：神煞是辅助标签，不能单凭一个神煞定吉凶；以身势、格局、大运为主。");
 
     return { tags: clean, lines: lines, items: items };
   }
@@ -1024,15 +1027,15 @@
       body: geDetail.body
     });
 
-    // 2 十神（卡片：来源 / 影响 / 化解·用法）
+    // 2 十神
     sections.push({
-      title: "十神情况",
+      title: "十神",
       body: ssDetail.lines
     });
 
     // 3 神煞
     sections.push({
-      title: "神煞情况",
+      title: "神煞",
       body: sha.lines
     });
 

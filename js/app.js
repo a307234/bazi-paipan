@@ -2,6 +2,8 @@
   var $ = function (sel, el) { return (el || document).querySelector(sel); };
   var $$ = function (sel, el) { return [].slice.call((el || document).querySelectorAll(sel)); };
 
+  var BIRTH_STORAGE_KEY = "bazi-shengchen";
+
   var state = {
     birth: {
       year: 1990,
@@ -20,6 +22,51 @@
 
   function pad(n) {
     return n < 10 ? "0" + n : String(n);
+  }
+
+  function saveBirthPrefs() {
+    try {
+      var payload = {
+        birth: state.birth,
+        calendarType: state.calendarType,
+        birthplace: state.birthplace,
+        useTrueSolar: state.useTrueSolar
+      };
+      localStorage.setItem(BIRTH_STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) { /* ignore quota / private mode */ }
+  }
+
+  function loadBirthPrefs() {
+    try {
+      var raw = localStorage.getItem(BIRTH_STORAGE_KEY);
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || !data.birth) return false;
+      var b = data.birth;
+      if (!(b.year >= 1900 && b.year <= 2100)) return false;
+      if (!(b.month >= 1 && b.month <= 12)) return false;
+      if (!(b.day >= 1 && b.day <= 31)) return false;
+      state.birth = {
+        year: +b.year,
+        month: +b.month,
+        day: +b.day,
+        hour: Math.min(23, Math.max(0, +b.hour || 0)),
+        minute: Math.min(59, Math.max(0, +b.minute || 0)),
+        gender: b.gender === 0 || b.gender === "0" ? 0 : 1
+      };
+      if (data.calendarType === "lunar" || data.calendarType === "solar") {
+        state.calendarType = data.calendarType;
+      }
+      if (typeof data.birthplace === "string" && data.birthplace.trim()) {
+        state.birthplace = data.birthplace.trim();
+      }
+      if (typeof data.useTrueSolar === "boolean") {
+        state.useTrueSolar = data.useTrueSolar;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   function syncInputsFromState() {
@@ -48,7 +95,9 @@
     state.useTrueSolar = $("#use-true-solar").checked;
 
     var cityInfo = BaziCities.find(state.birthplace);
-    state.birthplaceData = cityInfo || { name: state.birthplace, lng: 116.4, lat: 39.9 };
+    state.birthplaceData = cityInfo
+      ? { name: cityInfo.n, lng: cityInfo.lng, lat: cityInfo.lat, n: cityInfo.n, p: cityInfo.p }
+      : { name: state.birthplace, lng: 116.4, lat: 39.9 };
   }
 
   var WUXING_COLOR = {
@@ -195,7 +244,7 @@
         '</div>' +
         '<p class="shengshi-summary">日主 <strong style="color:' + ganColor(ss.dayGan) + '">' + ss.dayGan + ss.dayWx + '</strong> · ' + ss.summary + '</p>' +
         '<div class="factor-bars">' + factorHtml + '</div>' +
-        '<h4 class="shengshi-sub">五行力量（参考）</h4>' +
+        '<h4 class="shengshi-sub">五行力量</h4>' +
         '<div class="wx-bars">' + barHtml + '</div>' +
         '<div class="shengshi-yong">' +
           '<div class="shengshi-yong-col">' +
@@ -213,6 +262,42 @@
       '</div>';
   }
 
+  function wxSpans(ganWx, zhiWx) {
+    function one(w) {
+      if (!w) return "";
+      return '<em class="yun-wx" style="color:' + (WUXING_COLOR[w] || "inherit") + '">' + w + '</em>';
+    }
+    return one(ganWx) + one(zhiWx);
+  }
+
+  /** 按身势喜忌，判流年/月/日干支五行吉凶（天干权重大于地支） */
+  function judgeYunLuck(ganWx, zhiWx, shengshi) {
+    var xi = (shengshi && shengshi.xiYong) || [];
+    var ji = (shengshi && shengshi.jiShen) || [];
+    if (!xi.length && !ji.length) {
+      return { flag: "平", score: 0, tip: "暂无喜忌，作中性看" };
+    }
+    var score = 0;
+    if (ganWx && xi.indexOf(ganWx) >= 0) score += 2;
+    if (zhiWx && xi.indexOf(zhiWx) >= 0) score += 1;
+    if (ganWx && ji.indexOf(ganWx) >= 0) score -= 2;
+    if (zhiWx && ji.indexOf(zhiWx) >= 0) score -= 1;
+
+    var flag = score > 0 ? "吉" : (score < 0 ? "凶" : "平");
+    var tip = "";
+    if (flag === "吉") tip = "喜用较多，相对有利";
+    else if (flag === "凶") tip = "忌神较多，宜谨慎";
+    else tip = "喜忌参半或不明，宜平稳";
+    return { flag: flag, score: score, tip: tip };
+  }
+
+  function luckClass(luck) {
+    if (!luck || !luck.flag) return "";
+    if (luck.flag === "吉") return " is-luck-xi";
+    if (luck.flag === "凶") return " is-luck-ji";
+    return " is-luck-ping";
+  }
+
   function renderDaYun(result) {
     var yun = result.yun;
     var wrap = $("#dayun-body");
@@ -222,40 +307,170 @@
       return;
     }
 
+    var ss = result.shengshi || null;
+    var today = yun.today || {
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1,
+      day: new Date().getDate()
+    };
+
+    var focusIdx = yun.currentDaYunIndex;
+    if (focusIdx == null || focusIdx < 0) {
+      focusIdx = 0;
+      yun.daYun.forEach(function (d, i) { if (d.isCurrent) focusIdx = i; });
+    }
+
+    state.dayunView = state.dayunView || {};
+    var view = state.dayunView;
+    if (view.daYunIndex == null) view.daYunIndex = focusIdx;
+    if (view.year == null) view.year = today.year;
+    if (view.month == null) view.month = today.month;
+
+    var focusDy = yun.daYun[view.daYunIndex] || yun.daYun[focusIdx] || yun.daYun[0];
+    var years = (focusDy.liuNian || []).filter(function (ln) { return !!ln.ganzhi; });
+    if (!years.length) years = focusDy.liuNian || [];
+
+    var selYear = view.year;
+    var yearItem = null;
+    years.forEach(function (ln) {
+      if (ln.year === selYear) yearItem = ln;
+    });
+    if (!yearItem && years.length) {
+      yearItem = years.filter(function (ln) { return ln.isCurrent; })[0] || years[0];
+      selYear = yearItem.year;
+      view.year = selYear;
+    }
+
+    var months = (yearItem && yearItem.liuYue) ? yearItem.liuYue : [];
+    var selMonth = view.month;
+    if (selMonth < 1 || selMonth > 12) selMonth = today.month;
+    view.month = selMonth;
+
+    var days = [];
+    if (yearItem && yun.liuRiCurrent && selYear === today.year && selMonth === today.month) {
+      days = yun.liuRiCurrent;
+    } else if (window.BaziEngine && BaziEngine.buildLiuRi) {
+      days = BaziEngine.buildLiuRi(selYear, selMonth);
+    }
+
     var startTip = "出生后 " + yun.startYear + "年" + yun.startMonth + "月" + yun.startDay + "日起运（" + (yun.isForward ? "顺排" : "逆排") + "）";
-    var curLn = yun.liuNianCurrent;
-    var curTip = curLn
-      ? (' · 今年 ' + curLn.year + ' ' + curLn.ganzhi + (curLn.desc ? '：' + curLn.desc : ''))
+    var xiTip = (ss && ss.xiYong && ss.xiYong.length)
+      ? ("喜" + ss.xiYong.join("、") + "，忌" + (ss.jiShen || []).join("、") + " · 绿偏利、红偏慎")
       : "";
 
-    var h =
-      '<p class="yun-start">' + startTip + curTip + '</p>' +
-      '<div class="dayun-table-wrap"><table class="dayun-table"><tbody>';
+    var h = '<p class="yun-start">' + startTip + (xiTip ? " · " + xiTip : "") + '</p>';
 
-    yun.daYun.forEach(function (dy) {
+    h += '<div class="yun-dy-row">';
+    yun.daYun.forEach(function (dy, i) {
       if (!dy.ganzhi && dy.index === 0) {
-        h += '<tr class="dayun-before">' +
-          '<td class="dayun-age">' + dy.startAge + '–' + dy.endAge + '岁</td>' +
-          '<td class="dayun-year">' + dy.startYear + '–' + dy.endYear + '</td>' +
-          '<td class="dayun-gz">起运前</td>' +
-          '<td class="dayun-liunian"><span class="dayun-muted">童限 · 尚未行大运</span></td></tr>';
+        h += '<button type="button" class="yun-dy-chip' + (view.daYunIndex === i ? ' is-on' : '') + '" data-dy="' + i + '">' +
+          '<span class="yun-dy-chip__gz">起运前</span>' +
+          '<span class="yun-dy-chip__meta">' + dy.startAge + '–' + dy.endAge + '岁</span></button>';
         return;
       }
-      var cls = dy.isCurrent ? ' class="dayun-current"' : '';
-      h += '<tr' + cls + '>' +
-        '<td class="dayun-age">' + dy.startAge + '–' + dy.endAge + '岁</td>' +
-        '<td class="dayun-year">' + dy.startYear + '–' + dy.endYear + '</td>' +
-        '<td class="dayun-gz">' + dy.ganzhi + '</td>' +
-        '<td class="dayun-liunian">';
-      dy.liuNian.forEach(function (ln) {
-        var lnCls = (ln.year === new Date().getFullYear()) ? ' class="ln-current"' : '';
-        h += '<span' + lnCls + ' title="' + (ln.desc || '') + '">' + ln.year + '<small>' + ln.ganzhi + '</small></span>';
-      });
-      h += '</td></tr>';
+      if (!dy.ganzhi) return;
+      var dyLuck = judgeYunLuck(dy.ganWx, dy.zhiWx, ss);
+      h += '<button type="button" class="yun-dy-chip' + (view.daYunIndex === i ? ' is-on' : '') + (dy.isCurrent ? ' is-now' : '') + luckClass(dyLuck) + '" data-dy="' + i + '" title="' + (dyLuck.tip || "") + '">' +
+        '<span class="yun-dy-chip__gz">' + dy.ganzhi + wxSpans(dy.ganWx, dy.zhiWx) + '</span>' +
+        '<span class="yun-dy-chip__meta">' + dy.startAge + '–' + dy.endAge + '岁</span></button>';
     });
+    h += '</div>';
 
-    h += '</tbody></table></div>';
+    if (focusDy.ganzhi) {
+      var focusLuck = judgeYunLuck(focusDy.ganWx, focusDy.zhiWx, ss);
+      h += '<div class="yun-focus' + luckClass(focusLuck) + '" title="' + (focusLuck.tip || "") + '">' +
+        '<div class="yun-focus__label">' + (focusDy.isCurrent ? "当前大运" : "查看大运") + '</div>' +
+        '<div class="yun-focus__main">' +
+          '<strong>' + focusDy.ganzhi + '</strong>' +
+          wxSpans(focusDy.ganWx, focusDy.zhiWx) +
+          '<span class="yun-focus__range">' + focusDy.startAge + '–' + focusDy.endAge + '岁 · ' +
+            focusDy.startYear + '–' + focusDy.endYear + '</span>' +
+        '</div></div>';
+    } else {
+      h += '<div class="yun-focus"><div class="yun-focus__label">起运前童限</div>' +
+        '<div class="yun-focus__main"><span class="yun-focus__range">' +
+        focusDy.startAge + '–' + focusDy.endAge + '岁 · ' + focusDy.startYear + '–' + focusDy.endYear +
+        '</span></div></div>';
+    }
+
+    h += '<div class="yun-sec"><div class="yun-sec__title">流年</div><div class="yun-grid yun-grid--year">';
+    years.forEach(function (ln) {
+      if (!ln.ganzhi) {
+        h += '<span class="yun-cell yun-muted">童限</span>';
+        return;
+      }
+      var luck = judgeYunLuck(ln.ganWx, ln.zhiWx, ss);
+      var on = ln.year === selYear ? " is-on" : "";
+      var nowCls = ln.isCurrent ? " is-now" : "";
+      h += '<button type="button" class="yun-cell' + on + nowCls + luckClass(luck) + '" data-year="' + ln.year + '" title="' + (luck.tip || "") + '">' +
+        '<span class="yun-cell__top">' + ln.year + '<small>' + ln.age + '岁</small></span>' +
+        '<span class="yun-cell__gz">' + ln.ganzhi + '</span>' +
+        '<span class="yun-cell__wx">' + wxSpans(ln.ganWx, ln.zhiWx) + '</span></button>';
+    });
+    h += '</div></div>';
+
+    if (yearItem && months.length) {
+      h += '<div class="yun-sec"><div class="yun-sec__title">流月 · ' + selYear + '年 ' + yearItem.ganzhi +
+        wxSpans(yearItem.ganWx, yearItem.zhiWx) +
+        '</div><div class="yun-grid yun-grid--month">';
+      months.forEach(function (m) {
+        var luck = judgeYunLuck(m.ganWx, m.zhiWx, ss);
+        var on = m.month === selMonth ? " is-on" : "";
+        var nowCls = (selYear === today.year && m.month === today.month) ? " is-now" : "";
+        h += '<button type="button" class="yun-cell' + on + nowCls + luckClass(luck) + '" data-month="' + m.month + '" title="' + (luck.tip || "") + '">' +
+          '<span class="yun-cell__top">' + (m.name || (m.month + "月")) + '</span>' +
+          '<span class="yun-cell__gz">' + m.ganzhi + '</span>' +
+          '<span class="yun-cell__wx">' + wxSpans(m.ganWx, m.zhiWx) + '</span></button>';
+      });
+      h += '</div></div>';
+    }
+
+    if (days.length) {
+      h += '<div class="yun-sec"><div class="yun-sec__title">流日 · 公历' + selYear + '年' + selMonth + '月</div>' +
+        '<div class="yun-grid yun-grid--day">';
+      days.forEach(function (d) {
+        var luck = judgeYunLuck(d.ganWx, d.zhiWx, ss);
+        var nowCls = (d.year === today.year && d.month === today.month && d.day === today.day) ? " is-now" : "";
+        h += '<div class="yun-cell yun-cell--day' + nowCls + luckClass(luck) + '" title="' + (luck.tip || "") + '">' +
+          '<span class="yun-cell__top">' + d.day + '日</span>' +
+          '<span class="yun-cell__gz">' + d.ganzhi + '</span>' +
+          '<span class="yun-cell__wx">' + wxSpans(d.ganWx, d.zhiWx) + '</span></div>';
+      });
+      h += '</div></div>';
+    }
+
     wrap.innerHTML = h;
+    bindDaYunExplore(result);
+  }
+
+  function bindDaYunExplore(result) {
+    var wrap = $("#dayun-body");
+    if (!wrap || wrap._yunBound) return;
+    wrap._yunBound = true;
+    wrap.addEventListener("click", function (e) {
+      var dyBtn = e.target.closest("[data-dy]");
+      var yBtn = e.target.closest("[data-year]");
+      var mBtn = e.target.closest("[data-month]");
+      if (!dyBtn && !yBtn && !mBtn) return;
+      if (!state.result || !state.result.yun) return;
+      state.dayunView = state.dayunView || {};
+      if (dyBtn) {
+        var idx = +dyBtn.getAttribute("data-dy");
+        state.dayunView.daYunIndex = idx;
+        var dy = state.result.yun.daYun[idx];
+        if (dy && dy.liuNian && dy.liuNian.length) {
+          var hit = dy.liuNian.filter(function (ln) { return ln.isCurrent; })[0] || dy.liuNian.filter(function (ln) { return ln.ganzhi; })[0];
+          if (hit) state.dayunView.year = hit.year;
+        }
+      }
+      if (yBtn) {
+        state.dayunView.year = +yBtn.getAttribute("data-year");
+      }
+      if (mBtn) {
+        state.dayunView.month = +mBtn.getAttribute("data-month");
+      }
+      renderDaYun(state.result);
+    });
   }
 
   function renderExtras(result) {
@@ -327,7 +542,6 @@
             '</div>' +
             (chipHtml ? '<div class="wx-chip-row">' + chipHtml + '</div>' : '') +
             (wx.summary ? '<p class="geju-wx-summary">' + wx.summary + '</p>' : '') +
-            '<p class="geju-wx-hint">数字为天干与地支藏干出现次数；「缺」表示盘中未出现该五行。</p>' +
           '</div>';
       }
       panel.innerHTML =
@@ -367,7 +581,6 @@
             return (
               '<div class="geju-sec">' +
                 '<h4 class="geju-sec-title">' + sec.title + '</h4>' +
-                '<p class="geju-sha-lead">按格局与身势喜用综合参考；属文化学习，非择偶或就业硬标准。</p>' +
                 g.yiYi.rows.map(function (row) {
                   if (row.plain) {
                     return (
@@ -390,29 +603,20 @@
                     '</div>'
                   );
                 }).join("") +
-                '<p class="shengshi-yong-hint">大运流年会微调喜忌，不必刻板对号入座。</p>' +
               '</div>'
             );
           }
 
           var cardItems = null;
-          var lead = "";
-          var foot = "";
-          if (sec.title === "十神情况" && g.shishenDetail && g.shishenDetail.items && g.shishenDetail.items.length) {
+          if (sec.title === "十神" && g.shishenDetail && g.shishenDetail.items && g.shishenDetail.items.length) {
             cardItems = g.shishenDetail.items;
-            lead = "每个十神看三句：怎么来的 → 影响什么 → 怎么用/怎么化。标题旁「喜/忌」按当前身势标注。";
-            foot = "喜忌随身势而变；合格局、大运看，不宜单断吉凶。";
-          } else if (sec.title === "神煞情况" && g.shensha && g.shensha.items && g.shensha.items.length) {
+          } else if (sec.title === "神煞" && g.shensha && g.shensha.items && g.shensha.items.length) {
             cardItems = g.shensha.items;
-            lead = "来源写「怎么产生」，再看影响。吉神只写用法，凶神只写化解；平神用法与化解分列。";
-            foot = "神煞是辅助标签，以身势、格局、大运为主，不必单断吉凶。";
           }
           if (cardItems) {
-            var isSha = sec.title === "神煞情况";
             return (
               '<div class="geju-sec">' +
                 '<h4 class="geju-sec-title">' + sec.title + '</h4>' +
-                '<p class="geju-sha-lead">' + lead + '</p>' +
                 cardItems.map(function (it) {
                   var badge = "";
                   var cardMod = "";
@@ -425,27 +629,23 @@
                     cardMod = " sha-card--" + tone;
                   }
                   var actionHtml = "";
-                  if (isSha) {
-                    if (it.flag === "平") {
-                      if (it.usage) actionHtml += '<p><b>用法</b>：' + it.usage + '</p>';
-                      if (it.resolve) actionHtml += '<p><b>化解</b>：' + it.resolve + '</p>';
-                    } else if (it.action) {
-                      actionHtml = '<p><b>' + it.actionLabel + '</b>：' + it.action + '</p>';
-                    }
-                  } else {
-                    actionHtml = '<p><b>化解/用法</b>：' + it.resolve + '</p>';
+                  if (it.flag === "平") {
+                    if (it.usage) actionHtml += '<p><b>用法</b>：' + it.usage + '</p>';
+                    if (it.resolve) actionHtml += '<p><b>化解</b>：' + it.resolve + '</p>';
+                  } else if (it.action) {
+                    actionHtml = '<p><b>' + it.actionLabel + '</b>：' + it.action + '</p>';
+                  } else if (it.resolve) {
+                    actionHtml = '<p><b>化解</b>：' + it.resolve + '</p>';
                   }
                   return (
                     '<div class="sha-card' + cardMod + '">' +
                       '<div class="sha-card__name">' + it.name + badge + '</div>' +
-                      (it.flagNote ? '<p class="sha-card__flag">' + it.flagNote + '</p>' : '') +
                       '<p><b>来源</b>：' + it.from + '</p>' +
                       '<p><b>影响</b>：' + it.effect + '</p>' +
                       actionHtml +
                     '</div>'
                   );
                 }).join("") +
-                '<p class="shengshi-yong-hint">' + foot + '</p>' +
               '</div>'
             );
           }
@@ -515,6 +715,8 @@
         useTrueSolar: state.useTrueSolar,
       });
       state.result = result;
+      state.dayunView = null;
+      saveBirthPrefs();
       renderBaziTable(result);
       renderShengshi(result);
       renderDaYun(result);
@@ -550,12 +752,25 @@
     });
 
     var now = new Date();
-    state.birth.year = now.getFullYear() - 35;
-    state.birth.month = now.getMonth() + 1;
-    state.birth.day = now.getDate();
+    var hasSaved = loadBirthPrefs();
+    if (!hasSaved) {
+      state.birth.year = now.getFullYear() - 35;
+      state.birth.month = now.getMonth() + 1;
+      state.birth.day = now.getDate();
+      state.birthplace = "长沙";
+    }
     if (BaziCities && BaziCities.find) {
-      var defCity = BaziCities.find("长沙");
-      if (defCity) state.birthplaceData = defCity;
+      var defCity = BaziCities.find(state.birthplace) || BaziCities.find("长沙");
+      if (defCity) {
+        state.birthplaceData = {
+          name: defCity.n || defCity.name || state.birthplace,
+          lng: defCity.lng,
+          lat: defCity.lat,
+          n: defCity.n,
+          p: defCity.p
+        };
+        state.birthplace = defCity.n || state.birthplace;
+      }
     }
 
     syncInputsFromState();
@@ -588,7 +803,9 @@
       var v = this.value.trim();
       if (v) {
         var c = BaziCities.find(v);
-        if (c) state.birthplaceData = c;
+        if (c) {
+          state.birthplaceData = { name: c.n, lng: c.lng, lat: c.lat, n: c.n, p: c.p };
+        }
       }
     });
     $("#use-true-solar").addEventListener("change", function () {

@@ -909,46 +909,165 @@ a:hover { color: var(--accent-hot); }
 
 .shengshi-lines li { margin-bottom: 0.25rem; }
 
-/* 大运流年 */
+/* 大运流年 · 当前大运 + 流年/流月/流日五行 */
 .dayun-section { margin: 0; }
 .yun-title { margin: 0 0 0.4rem; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; }
 .yun-start { margin: 0 0 0.75rem; font-size: 0.82rem; color: var(--text-muted); }
 
-.dayun-table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-.dayun-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-
-.dayun-table td {
-  padding: 0.5rem 0.45rem; border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-  transition: background var(--dur) var(--ease);
+.yun-dy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
 }
 
-.dayun-table tr:hover td { background: rgba(var(--accent-rgb), 0.06); }
-.dayun-table tr:last-child td { border-bottom: none; }
-
-.dayun-age { width: 5em; text-align: center; color: var(--text); font-weight: 600; white-space: nowrap; }
-.dayun-year { width: 8em; text-align: center; color: var(--text-muted); white-space: nowrap; }
-
-.dayun-gz {
-  width: 5em; text-align: center; font-family: var(--font-serif);
-  font-size: 1.05rem; font-weight: 700; color: var(--accent-hot);
+.yun-dy-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 
-.dayun-liunian { display: flex; flex-wrap: wrap; gap: 4px; }
+.yun-dy-chip:hover { border-color: var(--hover-border); color: var(--text); }
+.yun-dy-chip.is-on {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--text);
+}
+.yun-dy-chip.is-now { box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.35); }
+.yun-dy-chip__gz { font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.2rem; }
+.yun-dy-chip__meta { font-size: 0.65rem; opacity: 0.8; }
 
-.dayun-liunian span {
-  display: inline-flex; flex-direction: column; align-items: center;
-  padding: 2px 5px; border-radius: 5px; font-size: 0.72rem;
-  color: var(--text-muted); min-width: 3.2em;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+.yun-focus {
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
-.dayun-liunian span small { font-size: 0.65rem; opacity: 0.8; }
-.dayun-liunian span:hover { background: rgba(var(--accent-rgb), 0.1); color: var(--text); }
-.dayun-current { background: rgba(var(--accent-rgb), 0.08) !important; }
-.dayun-current .dayun-gz { text-shadow: 0 0 8px rgba(var(--accent-rgb), 0.3); }
-.dayun-before td { opacity: 0.75; }
-.dayun-muted { font-size: 0.72rem; color: var(--text-muted); }
+.yun-focus__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.35rem;
+}
+
+.yun-focus__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.yun-focus__range {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.yun-wx {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-left: 0.12rem;
+}
+
+.yun-sec { margin-bottom: 0.85rem; }
+.yun-sec__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 0.45rem;
+}
+
+.yun-grid {
+  display: grid;
+  gap: 0.4rem;
+}
+.yun-grid--year { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.yun-grid--month { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.yun-grid--day { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+
+@media (max-width: 720px) {
+  .yun-grid--year { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .yun-grid--month { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .yun-grid--day { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.yun-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.yun-cell:hover { border-color: var(--hover-border); background: rgba(var(--accent-rgb), 0.06); }
+.yun-cell.is-on {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.yun-cell.is-now {
+  box-shadow: inset 0 0 0 1px rgba(46, 204, 113, 0.45);
+}
+.yun-cell--day { cursor: default; }
+.yun-cell__top {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.25rem;
+  align-items: baseline;
+}
+.yun-cell__top small { font-size: 0.62rem; opacity: 0.85; }
+.yun-cell__gz { font-size: 0.88rem; font-weight: 800; letter-spacing: 0.04em; }
+.yun-cell__wx { display: inline-flex; gap: 0.1rem; }
+.yun-muted { opacity: 0.6; font-size: 0.75rem; padding: 0.45rem; }
+
+.yun-cell.is-luck-xi,
+.yun-dy-chip.is-luck-xi,
+.yun-focus.is-luck-xi {
+  border-color: rgba(46, 204, 113, 0.45);
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.yun-cell.is-luck-ji,
+.yun-dy-chip.is-luck-ji,
+.yun-focus.is-luck-ji {
+  border-color: rgba(231, 76, 60, 0.45);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.yun-cell.is-luck-ping,
+.yun-dy-chip.is-luck-ping,
+.yun-focus.is-luck-ping {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.06);
+}
 
 .ln-current {
   background: rgba(var(--accent-rgb), 0.22) !important;

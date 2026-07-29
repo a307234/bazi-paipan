@@ -3,6 +3,74 @@
   var GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
   var ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
 
+  var GAN_WX = {
+    甲: "木", 乙: "木", 丙: "火", 丁: "火", 戊: "土", 己: "土",
+    庚: "金", 辛: "金", 壬: "水", 癸: "水"
+  };
+  var ZHI_WX = {
+    子: "水", 丑: "土", 寅: "木", 卯: "木", 辰: "土", 巳: "火",
+    午: "火", 未: "土", 申: "金", 酉: "金", 戌: "土", 亥: "水"
+  };
+
+  function gzMeta(gz) {
+    if (!gz || gz.length < 2) {
+      return { ganzhi: gz || "", gan: "", zhi: "", ganWx: "", zhiWx: "", wxText: "" };
+    }
+    var g = gz.charAt(0);
+    var z = gz.charAt(1);
+    return {
+      ganzhi: gz,
+      gan: g,
+      zhi: z,
+      ganWx: GAN_WX[g] || "",
+      zhiWx: ZHI_WX[z] || "",
+      wxText: (GAN_WX[g] || "") + (ZHI_WX[z] || "")
+    };
+  }
+
+  function daysInSolarMonth(year, month) {
+    return new Date(year, month, 0).getDate();
+  }
+
+  function buildLiuRi(year, month) {
+    var n = daysInSolarMonth(year, month);
+    var list = [];
+    for (var d = 1; d <= n; d++) {
+      var lun = Solar.fromYmd(year, month, d).getLunar();
+      var meta = gzMeta(lun.getDayInGanZhi());
+      list.push({
+        year: year,
+        month: month,
+        day: d,
+        ganzhi: meta.ganzhi,
+        gan: meta.gan,
+        zhi: meta.zhi,
+        ganWx: meta.ganWx,
+        zhiWx: meta.zhiWx,
+        wxText: meta.wxText
+      });
+    }
+    return list;
+  }
+
+  function buildLiuYue(liuNianObj) {
+    var arr = liuNianObj.getLiuYue() || [];
+    return arr.map(function (ly, idx) {
+      var meta = gzMeta(ly.getGanZhi());
+      return {
+        index: idx,
+        month: idx + 1,
+        name: ly.getMonthInChinese ? (ly.getMonthInChinese() + "月") : ((idx + 1) + "月"),
+        ganzhi: meta.ganzhi,
+        gan: meta.gan,
+        zhi: meta.zhi,
+        ganWx: meta.ganWx,
+        zhiWx: meta.zhiWx,
+        wxText: meta.wxText
+      };
+    });
+  }
+
   // 十神对照表（日干 vs 目标干）
   var SHISHEN_TABLE = {
     甲:{甲:"比肩",乙:"劫财",丙:"食神",丁:"伤官",戊:"偏财",己:"正财",庚:"七杀",辛:"正官",壬:"偏印",癸:"正印"},
@@ -254,25 +322,42 @@
     var genderText = gender === 1 ? "男（乾造）" : "女（坤造）";
     var shichen = BaziCalendar.hourToShichen(finalHour, finalMinute);
 
-    // 大运流年
+    // 大运流年（含五行；当前大运附流月，当月附流日）
     var yun = ec.getYun(gender, 2);
     var daYunList = [];
     var daYunArr = yun.getDaYun(8);
-    var currentYear = new Date().getFullYear();
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var currentMonth = now.getMonth() + 1;
+    var currentDay = now.getDate();
     var liuNianCurrent = null;
+    var currentDaYunIndex = -1;
 
     for (var i = 0; i < daYunArr.length; i++) {
       var dy = daYunArr[i];
+      var dyGz = dy.getGanZhi();
+      var dyMeta = gzMeta(dyGz);
+      var isCurrentDy = currentYear >= dy.getStartYear() && currentYear <= dy.getEndYear();
+      if (isCurrentDy) currentDaYunIndex = i;
+
       var liuNianArr = dy.getLiuNian(10);
       var liuNianList = [];
       for (var j = 0; j < liuNianArr.length; j++) {
         var ln = liuNianArr[j];
         var lnGz = ln.getGanZhi();
+        var lnMeta = gzMeta(lnGz);
         var lnItem = {
           year: ln.getYear(),
           age: ln.getAge(),
           ganzhi: lnGz,
-          desc: liuNianDesc(dayGan, dayZhi, lnGz)
+          gan: lnMeta.gan,
+          zhi: lnMeta.zhi,
+          ganWx: lnMeta.ganWx,
+          zhiWx: lnMeta.zhiWx,
+          wxText: lnMeta.wxText,
+          desc: liuNianDesc(dayGan, dayZhi, lnGz),
+          isCurrent: ln.getYear() === currentYear,
+          liuYue: buildLiuYue(ln)
         };
         liuNianList.push(lnItem);
         if (ln.getYear() === currentYear) {
@@ -286,11 +371,29 @@
         endAge: dy.getEndAge(),
         startYear: dy.getStartYear(),
         endYear: dy.getEndYear(),
-        ganzhi: dy.getGanZhi(),
+        ganzhi: dyGz,
+        gan: dyMeta.gan,
+        zhi: dyMeta.zhi,
+        ganWx: dyMeta.ganWx,
+        zhiWx: dyMeta.zhiWx,
+        wxText: dyMeta.wxText,
         liuNian: liuNianList,
-        isCurrent: (currentYear >= dy.getStartYear() && currentYear <= dy.getEndYear())
+        isCurrent: isCurrentDy
       });
     }
+
+    if (currentDaYunIndex < 0) {
+      // 起运前：聚焦第一柱有干支的大运或童限
+      for (var k = 0; k < daYunList.length; k++) {
+        if (daYunList[k].ganzhi) {
+          currentDaYunIndex = k;
+          break;
+        }
+      }
+      if (currentDaYunIndex < 0) currentDaYunIndex = 0;
+    }
+
+    var liuRiCurrent = buildLiuRi(currentYear, currentMonth);
 
     return {
       solar: { year: solar.getYear(), month: solar.getMonth(), day: solar.getDay(), hour: finalHour, minute: finalMinute },
@@ -319,7 +422,10 @@
         startDay: yun.getStartDay(),
         isForward: yun.isForward(),
         daYun: daYunList,
-        liuNianCurrent: liuNianCurrent
+        currentDaYunIndex: currentDaYunIndex,
+        liuNianCurrent: liuNianCurrent,
+        liuRiCurrent: liuRiCurrent,
+        today: { year: currentYear, month: currentMonth, day: currentDay }
       },
       meta: {
         shengxiao: lunar.getYearShengXiao(),
@@ -331,5 +437,5 @@
     };
   }
 
-  root.BaziEngine = { compute: compute };
+  root.BaziEngine = { compute: compute, buildLiuRi: buildLiuRi, gzMeta: gzMeta };
 })(typeof window !== "undefined" ? window : global);
