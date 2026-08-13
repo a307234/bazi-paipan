@@ -1,16 +1,17 @@
 /** 八字排盘核心 — 基于 lunar-javascript */
 (function (root) {
-  var GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
-  var ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
-
-  var GAN_WX = {
+  var _wx = root.BaziWxData || {};
+  var GAN_WX = _wx.GAN_WX || {
     甲: "木", 乙: "木", 丙: "火", 丁: "火", 戊: "土", 己: "土",
     庚: "金", 辛: "金", 壬: "水", 癸: "水"
   };
-  var ZHI_WX = {
+  var ZHI_WX = _wx.ZHI_WX || {
     子: "水", 丑: "土", 寅: "木", 卯: "木", 辰: "土", 巳: "火",
     午: "火", 未: "土", 申: "金", 酉: "金", 戌: "土", 亥: "水"
   };
+
+  var GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+  var ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
 
   function gzMeta(gz) {
     if (!gz || gz.length < 2) {
@@ -189,7 +190,9 @@
 
     var solar;
     if (calendarType === "lunar") {
-      var tmpLunar = Lunar.fromYmdHms(year, month, day, hour, minute, 0);
+      var lunarMonth = month;
+      if (opts.lunarLeap) lunarMonth = -Math.abs(month);
+      var tmpLunar = Lunar.fromYmdHms(year, lunarMonth, day, hour, minute, 0);
       solar = tmpLunar.getSolar();
     } else {
       solar = Solar.fromYmdHms(year, month, day, hour, minute, 0);
@@ -395,13 +398,41 @@
 
     var liuRiCurrent = buildLiuRi(currentYear, currentMonth);
 
+    // 公历生日用换算后的阳历日；钟点用用户输入（真太阳时另行列示）
+    var solarBirth = {
+      year: solar.getYear(),
+      month: solar.getMonth(),
+      day: solar.getDay(),
+      hour: hour,
+      minute: minute
+    };
+    var lunarMonthAbs = Math.abs(lunar.getMonth());
+    var lunarLeap = lunar.getMonth() < 0;
+    // getMonthInChinese 已含「闰」前缀
+    var lunarBirth = {
+      year: lunar.getYear(),
+      month: lunarMonthAbs,
+      day: lunar.getDay(),
+      isLeap: lunarLeap,
+      yearGanZhi: lunar.getYearInGanZhi(),
+      monthChinese: lunar.getMonthInChinese(),
+      dayChinese: lunar.getDayInChinese(),
+      text: lunar.toString(),
+      full: lunar.getYear() + "年" + lunar.getMonthInChinese() + "月" + lunar.getDayInChinese() +
+        "（" + lunar.getYearInGanZhi() + "）"
+    };
+    var xingzuo = "";
+    try {
+      xingzuo = (solar.getXingZuo && solar.getXingZuo()) || (solar.getXingzuo && solar.getXingzuo()) || "";
+    } catch (e) {
+      xingzuo = "";
+    }
+
     return {
-      solar: { year: solar.getYear(), month: solar.getMonth(), day: solar.getDay(), hour: finalHour, minute: finalMinute },
+      solar: { year: solarBirth.year, month: solarBirth.month, day: solarBirth.day, hour: finalHour, minute: finalMinute },
+      solarBirth: solarBirth,
       solarOriginal: { year: year, month: month, day: day, hour: hour, minute: minute },
-      lunar: {
-        text: lunar.toString(),
-        full: lunar.getYearInGanZhi() + "年 " + lunar.getMonthInChinese() + "月" + lunar.getDayInChinese(),
-      },
+      lunar: lunarBirth,
       gender: gender,
       genderText: genderText,
       calendarType: calendarType,
@@ -429,6 +460,7 @@
       },
       meta: {
         shengxiao: lunar.getYearShengXiao(),
+        xingzuo: xingzuo,
         jieqi: lunar.getJieQi() || "",
         taiyuan: ec.getTaiYuan(),
         minggong: ec.getMingGong(),

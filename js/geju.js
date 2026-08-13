@@ -1,6 +1,7 @@
 /** 命格综评 — 格局 / 十神 / 神煞 / 适宜参考（白话） */
 (function (root) {
-  var GAN_WX = {
+  var _wx = root.BaziWxData || {};
+  var GAN_WX = _wx.GAN_WX || {
     甲: "木", 乙: "木", 丙: "火", 丁: "火", 戊: "土", 己: "土",
     庚: "金", 辛: "金", 壬: "水", 癸: "水"
   };
@@ -35,6 +36,87 @@
     "正印": "正印格", "偏印": "偏印格",
     "食神": "食神格", "伤官": "伤官格",
     "比肩": "建禄格", "劫财": "劫财格"
+  };
+
+  /** 格局大类（面诊口述用） */
+  var GE_CATEGORY = {
+    "正官格": { cat: "官杀类", catFull: "官杀类 · 正格", family: "官", focus: "名分、规则、责任" },
+    "七杀格": { cat: "官杀类", catFull: "官杀类 · 正格", family: "杀", focus: "压力、挑战、权威" },
+    "正财格": { cat: "财星类", catFull: "财星类 · 正格", family: "财", focus: "正当财禄、积蓄" },
+    "偏财格": { cat: "财星类", catFull: "财星类 · 正格", family: "财", focus: "机会财、流动财" },
+    "正印格": { cat: "印星类", catFull: "印星类 · 正格", family: "印", focus: "学业、贵人、庇护" },
+    "偏印格": { cat: "印星类", catFull: "印星类 · 正格", family: "印", focus: "偏门专精、独立思考" },
+    "食神格": { cat: "食伤类", catFull: "食伤类 · 正格", family: "食", focus: "才华、表达、口福" },
+    "伤官格": { cat: "食伤类", catFull: "食伤类 · 正格", family: "伤", focus: "锋芒、创意、突破" },
+    "建禄格": { cat: "禄刃类", catFull: "禄刃类 · 正格", family: "禄", focus: "自立、执行、本体气势" },
+    "劫财格": { cat: "禄刃类", catFull: "禄刃类 · 正格", family: "刃", focus: "争夺、分财、社交热" }
+  };
+
+  /** 破格/成格检查用的十神对抗关系 */
+  var GE_BREAK_CHECKS = {
+    "正官格": {
+      breakSs: ["伤官"],
+      breakTip: "伤官见官：锋芒冲名分，易顶撞规则、损职级口碑",
+      helpSs: ["印", "财"],
+      helpTip: "印护官、财生官，格清更易得名分"
+    },
+    "七杀格": {
+      breakSs: [],
+      breakTip: "杀重无制无化，易成高压攻身",
+      needCtrl: true,
+      helpSs: ["食神", "伤官", "印"],
+      helpTip: "食伤制杀或印化杀，七杀方成权威可用"
+    },
+    "正财格": {
+      breakSs: ["比肩", "劫财"],
+      breakTip: "比劫夺财：争竞分财、合伙易散财",
+      helpSs: ["官", "食"],
+      helpTip: "身旺有官护财、或食伤生财更稳"
+    },
+    "偏财格": {
+      breakSs: ["比肩", "劫财"],
+      breakTip: "比劫夺财：机会财易被分、花销失控",
+      helpSs: ["官", "食"],
+      helpTip: "身能任财且有制比，偏财方成气候"
+    },
+    "正印格": {
+      breakSs: ["正财", "偏财"],
+      breakTip: "财星破印：学业靠山、资质平台易受冲",
+      helpSs: ["官"],
+      helpTip: "官印相生，印格更清贵"
+    },
+    "偏印格": {
+      breakSs: ["正财", "偏财"],
+      breakTip: "财破枭印：专注与贵人线易被物质事务打断",
+      helpSs: ["官", "杀"],
+      helpTip: "杀印相生，专精路线更稳"
+    },
+    "食神格": {
+      breakSs: ["偏印"],
+      breakTip: "枭神夺食：才华表达被压抑、思路易卡",
+      helpSs: ["财"],
+      helpTip: "食神生财，才华易变现"
+    },
+    "伤官格": {
+      breakSs: ["正官"],
+      breakTip: "伤官见官：才气冲名分，口舌官非风险升",
+      helpSs: ["财", "印"],
+      helpTip: "伤官生财或印制伤，锋芒可转成成果"
+    },
+    "建禄格": {
+      breakSs: [],
+      breakTip: "有禄无用：身旺无财官食伤可任，易空旺",
+      needYong: true,
+      helpSs: ["财", "官", "食", "伤"],
+      helpTip: "禄旺宜任财官或泄秀，方有用武之地"
+    },
+    "劫财格": {
+      breakSs: [],
+      breakTip: "劫旺无制：分财争竞过重，合作易伤",
+      needYong: true,
+      helpSs: ["财", "官", "食"],
+      helpTip: "有财可夺之象但需官制约，或泄秀成才"
+    }
   };
 
   var GE_INFO = {
@@ -559,10 +641,10 @@
       };
     });
 
-    var attrText = dayWx ? (dayWx + "属 · " + dayWx + "命") : "";
+    var attrText = dayWx ? (dayWx + "命") : "";
     var summary = missing.length
-      ? ("盘中缺「" + missing.join("、") + "」")
-      : "盘中五行俱全，无明显缺失";
+      ? ("缺" + missing.join("、"))
+      : "五行俱全";
 
     return {
       dayGan: dayGan || "",
@@ -689,8 +771,11 @@
       var d = SHISHEN_DETAIL[name];
       var mark = markShiShenXiJi(name, shengshi, dayWx);
       var chartFrom = (ssInfo.origins && ssInfo.origins[name]) ? ssInfo.origins[name].join("、") : "";
-      var from = d
-        ? (d.from + (chartFrom ? " 本盘见于：" + chartFrom + "。" : ""))
+      var fromBase = d
+        ? String(d.from || "").replace(/。?例：[^。]+。?/g, "。").replace(/。。+/g, "。").trim()
+        : "";
+      var from = fromBase
+        ? (fromBase + (chartFrom ? " 本盘见于：" + chartFrom + "。" : (fromBase.slice(-1) === "。" ? "" : "。")))
         : (chartFrom ? "本盘见于：" + chartFrom + "。" : "由日主与其余干支推得。");
       var effect = d && d.effect
         ? (d.effect[side] || d.effect["中"])
@@ -777,7 +862,194 @@
     return out;
   }
 
-  /** 格局：怎么来的 / 有利 / 不利 */
+  function hasShiShenInChart(pillars, names) {
+    var set = {};
+    (names || []).forEach(function (n) { set[n] = true; });
+    var hit = [];
+    (pillars || []).forEach(function (p) {
+      if (p.shishenGan && set[p.shishenGan] && hit.indexOf(p.shishenGan) < 0) hit.push(p.shishenGan);
+      (p.canggan || []).forEach(function (c) {
+        if (c.shishen && set[c.shishen] && hit.indexOf(c.shishen) < 0) hit.push(c.shishen);
+      });
+    });
+    return hit;
+  }
+
+  function hasFamilyInChart(pillars, familyKeys) {
+    // familyKeys like ["印"] matches 正印/偏印; ["官"] matches 正官; ["杀"] matches 七杀; ["财"] matches 正偏财; ["食"]食神 ["伤"]伤官
+    var map = {
+      印: ["正印", "偏印"],
+      官: ["正官"],
+      杀: ["七杀"],
+      财: ["正财", "偏财"],
+      食: ["食神"],
+      伤: ["伤官"],
+      比: ["比肩"],
+      劫: ["劫财"]
+    };
+    var names = [];
+    (familyKeys || []).forEach(function (k) {
+      (map[k] || [k]).forEach(function (n) {
+        if (names.indexOf(n) < 0) names.push(n);
+      });
+    });
+    return hasShiShenInChart(pillars, names);
+  }
+
+  /**
+   * 格局档次：上等成格 / 中等成格 / 偏弱成格 / 破格待救
+   * 评分仅供面诊排序参考，非命理绝对值。
+   */
+  function evaluateGeGrade(opts) {
+    var geKey = opts.geKey;
+    var benqiSS = opts.benqiSS;
+    var monthGanSS = opts.monthGanSS;
+    var shengshi = opts.shengshi;
+    var pillars = opts.pillars || [];
+    var reasons = [];
+    var criteria = [];
+    var score = 60; // 起步：月令取格成立
+
+    criteria.push("① 取格法：以月令地支「本气」相对日主之十神定格（子平正格常法）。");
+    criteria.push("② 透清：月干（或年时干）透出与格神同类，格气更显。");
+    criteria.push("③ 身任：身强能任财官食伤；身弱需印比生扶，否则格气难兑现。");
+    criteria.push("④ 成破：视该格忌见之十神（如伤官见官、财破印、枭神夺食等）是否明显。");
+    criteria.push("⑤ 护格：是否有制化、护卫（如杀有制、官有印、食伤生财等）。");
+
+    if (!benqiSS) {
+      return {
+        grade: "格未清晰",
+        gradeTone: "平",
+        score: 40,
+        summary: "月令本气未能明确归入常见八格/禄刃，暂以杂气论，需结合透干与身势细断。",
+        reasons: ["月令本气十神不明，无法按标准正格定档"],
+        criteria: criteria
+      };
+    }
+
+    reasons.push("月令本气为「" + benqiSS + "」，取「" + geKey + "」成立（正格基线）。");
+
+    // 透干
+    if (monthGanSS && monthGanSS === benqiSS) {
+      score += 12;
+      reasons.push("月干透出格神「" + monthGanSS + "」，格气透清，档次上浮。");
+    } else if (monthGanSS) {
+      score -= 4;
+      reasons.push("月干另透「" + monthGanSS + "」，与月令主格不完全一致，主气略杂。");
+    } else {
+      reasons.push("月干未透格神，格在令中、气藏支内，需靠运透或通根发挥。");
+    }
+
+    // 身任
+    var level = (shengshi && shengshi.level) || "";
+    var check = GE_BREAK_CHECKS[geKey] || {};
+    var isStrong = level === "身强" || level === "偏强";
+    var isWeak = level === "身弱" || level === "偏弱";
+    var isMid = level === "中和" || !level;
+
+    if (geKey === "建禄格" || geKey === "劫财格" || geKey.indexOf("印") >= 0) {
+      // 禄刃/印：身弱时格神反可助身；身过旺需有泄耗
+      if (isWeak) {
+        score += 6;
+        reasons.push("身势「" + level + "」，" + geKey + "之助身象较有用，档次略升。");
+      } else if (isStrong) {
+        score -= 2;
+        reasons.push("身势「" + level + "」，禄/印再助易过刚，需财官食伤疏导。");
+      } else if (isMid && level) {
+        score += 3;
+        reasons.push("身势「" + level + "」，与" + geKey + "搭配相对平稳。");
+      }
+    } else {
+      // 财官食伤格：宜身强能任
+      if (isStrong) {
+        score += 10;
+        reasons.push("身势「" + level + "」，较能任" + geKey.replace("格", "") + "，格局力量易兑现。");
+      } else if (isWeak) {
+        score -= 12;
+        reasons.push("身势「" + level + "」，恐难任" + geKey.replace("格", "") + "，格气有而身力不足。");
+      } else if (level) {
+        score += 4;
+        reasons.push("身势「" + level + "」，任格能力中等，发挥看大运补足。");
+      }
+    }
+
+    // 破格
+    var breakHit = hasShiShenInChart(pillars, check.breakSs || []);
+    if (breakHit.length) {
+      score -= 14;
+      reasons.push("见破格因子「" + breakHit.join("、") + "」：" + (check.breakTip || "格气受损") + "。");
+    }
+
+    // 七杀需制化
+    if (check.needCtrl) {
+      var ctrl = hasFamilyInChart(pillars, check.helpSs || []);
+      if (ctrl.length) {
+        score += 8;
+        reasons.push("七杀有制化（见" + ctrl.join("、") + "），" + (check.helpTip || "可用") + "。");
+      } else {
+        score -= 10;
+        reasons.push("七杀制化不明显，" + (check.breakTip || "压力易攻身") + "。");
+      }
+    }
+
+    // 禄刃需有用神
+    if (check.needYong) {
+      var yong = hasFamilyInChart(pillars, check.helpSs || []);
+      if (yong.length) {
+        score += 8;
+        reasons.push("禄/刃有所任（见" + yong.join("、") + "），" + (check.helpTip || "有用武之地") + "。");
+      } else {
+        score -= 8;
+        reasons.push(check.breakTip || "有禄无用，需运上补财官食伤。");
+      }
+    }
+
+    // 护格（非强制）
+    if (!check.needCtrl && !check.needYong && check.helpSs && check.helpSs.length) {
+      var help = hasFamilyInChart(pillars, check.helpSs);
+      if (help.length) {
+        score += 5;
+        reasons.push("见护格/成格辅助（" + help.join("、") + "）：" + (check.helpTip || "格更稳") + "。");
+      }
+    }
+
+    if (score > 100) score = 100;
+    if (score < 0) score = 0;
+
+    var grade, gradeTone, summary;
+    if (score >= 78) {
+      grade = "上等成格";
+      gradeTone = "利";
+      summary = "格神清晰，身势与护卫大体相配，破格不重——面诊可作「主旋律明确、可顺势做强」来讲。";
+    } else if (score >= 62) {
+      grade = "中等成格";
+      gradeTone = "平";
+      summary = "格局成立且可用，但有透干不纯、身任不足或小破之处——宜扬长避短，用大运补缺。";
+    } else if (score >= 48) {
+      grade = "偏弱成格";
+      gradeTone = "平";
+      summary = "格名虽在，力量或身任偏弱——先扶身/护格，再谈格局红利，切忌硬扛格象。";
+    } else {
+      grade = "破格待救";
+      gradeTone = "慎";
+      summary = "破格因子或身不任格较明显——当面重点讲「如何救应」，勿只夸格局名称。";
+    }
+
+    if (shengshi && shengshi.level) {
+      summary = "身势「" + shengshi.level + "」参与定档。" + summary;
+    }
+
+    return {
+      grade: grade,
+      gradeTone: gradeTone,
+      score: score,
+      summary: summary,
+      reasons: reasons,
+      criteria: criteria
+    };
+  }
+
+  /** 格局：类型 / 档次 / 判断标准 / 有利不利 */
   function describeGePattern(opts) {
     var geKey = opts.geKey;
     var info = opts.info;
@@ -789,6 +1061,20 @@
     var benqiSS = opts.benqiSS;
     var monthGanSS = opts.monthGanSS;
     var shengshi = opts.shengshi;
+    var pillars = opts.pillars || [];
+
+    var catMeta = GE_CATEGORY[geKey] || {
+      cat: "杂气/他格",
+      catFull: "杂气或非典型正格",
+      family: "",
+      focus: "以月令主气为命局主色调"
+    };
+
+    var typeName = geKey;
+    var typeCategory = catMeta.catFull;
+    var typeExplain =
+      "月令取格归入「" + geKey + "」（" + catMeta.cat + "），焦点偏「" + catMeta.focus + "」。" +
+      (shengshi && shengshi.level ? "档次已结合身势「" + shengshi.level + "」能否任格。" : "");
 
     var how = (info && info.how)
       ? info.how
@@ -796,9 +1082,8 @@
         (benqiSS ? "为「" + benqiSS + "」" : "") + "取格，命局主旋律由此定。");
 
     var howDetail = [
-      "日主" + dayGan + "（" + dayWx + "），生于" + monthZhi + "月（" + (MONTH_NAME[monthZhi] || "") + "）。",
-      "取格依据：月令主气决定格局——本盘取「" + geKey + "」" +
-        (benqi && benqiSS ? "（月令本气" + benqi + "相对日主为" + benqiSS + "）" : "") + "。",
+      "日主" + dayGan + dayWx + "，" + monthZhi + "月取「" + geKey + "」" +
+        (benqi && benqiSS ? "（月令本气" + benqi + "＝" + benqiSS + "）" : "") + "。",
       how
     ];
     if (monthGanSS) {
@@ -808,6 +1093,14 @@
           : "月干" + monthGan + "另透「" + monthGanSS + "」，与月令主格不完全一致，性格多一层色彩。"
       );
     }
+
+    var gradeInfo = evaluateGeGrade({
+      geKey: geKey,
+      benqiSS: benqiSS,
+      monthGanSS: monthGanSS,
+      shengshi: shengshi,
+      pillars: pillars
+    });
 
     var pros = (info && info.pros) ? info.pros.slice() : ["把握月令主气，顺势发挥格局长处"];
     var cons = (info && info.cons) ? info.cons.slice() : ["需合身势喜忌与大运再论成败"];
@@ -829,8 +1122,15 @@
     }
 
     var body = [];
+    body.push("【类型】" + typeName + "（" + typeCategory + "）");
+    body.push("【档次】" + gradeInfo.grade + "（参考分" + gradeInfo.score + "）");
+    body.push(gradeInfo.summary);
     body.push("【" + geKey + "】");
     howDetail.forEach(function (t) { body.push(t); });
+    body.push("【判断标准】");
+    gradeInfo.criteria.forEach(function (t) { body.push(t); });
+    body.push("【本盘对照】");
+    gradeInfo.reasons.forEach(function (t) { body.push("· " + t); });
     body.push("【有利因素】");
     pros.forEach(function (t) { body.push("· " + t); });
     body.push("【不利因素】");
@@ -838,6 +1138,15 @@
     if (info && info.mean) body.push("总览：" + info.mean);
 
     return {
+      typeName: typeName,
+      typeCategory: typeCategory,
+      typeExplain: typeExplain,
+      grade: gradeInfo.grade,
+      gradeTone: gradeInfo.gradeTone,
+      gradeScore: gradeInfo.score,
+      gradeSummary: gradeInfo.summary,
+      gradeReasons: gradeInfo.reasons,
+      criteria: gradeInfo.criteria,
       how: how,
       howDetail: howDetail,
       pros: pros,
@@ -870,20 +1179,20 @@
     }
 
     var rows = [
-      { key: "industry", label: "适宜行业", items: industries },
-      { key: "people", label: "适宜之人", items: people, plain: true },
-      { key: "color", label: "适宜颜色", items: colors },
-      { key: "number", label: "适宜数字", items: numbers },
-      { key: "zodiac", label: "适宜星座", items: zodiac },
+      { key: "industry", label: "行业", items: industries },
+      { key: "people", label: "人", items: people, plain: true },
+      { key: "color", label: "颜色", items: colors },
+      { key: "number", label: "数字", items: numbers },
+      { key: "zodiac", label: "星座", items: zodiac },
       { key: "wuxing", label: "喜用五行", items: xi }
     ];
 
     var body = [
-      "适宜行业：" + industries.join("、") + "。",
+      "行业：" + industries.join("、") + "。",
       people[0] + "；" + people[1] + "。",
-      "适宜颜色：" + colors.join("、") + "。",
-      "适宜数字：" + numbers.join("、") + "。",
-      "适宜星座：" + zodiac.join("、") + "。"
+      "颜色：" + colors.join("、") + "。",
+      "数字：" + numbers.join("、") + "。",
+      "星座：" + zodiac.join("、") + "。"
     ];
 
     return {
@@ -973,6 +1282,89 @@
     return { tags: clean, lines: lines, items: items };
   }
 
+  /** 优先取带身势/身任语感的利或慎句，便于一眼落地 */
+  function pickGlanceLine(list, fallback) {
+    var arr = list || [];
+    var i;
+    for (i = arr.length - 1; i >= 0; i--) {
+      var t = arr[i] || "";
+      if (
+        t.indexOf("身势") >= 0 ||
+        t.indexOf("身偏") >= 0 ||
+        t.indexOf("身弱") >= 0 ||
+        t.indexOf("身强") >= 0 ||
+        t.indexOf("身不") >= 0 ||
+        t.indexOf("任") >= 0
+      ) {
+        return t;
+      }
+    }
+    return arr[0] || fallback;
+  }
+
+  /**
+   * 一眼看懂：命主 + 身势 + 格局 + 喜忌慎利
+   */
+  function buildGlance(opts) {
+    var dayGan = opts.dayGan || "";
+    var dayWx = opts.dayWx || "";
+    var geKey = opts.geKey || "命格";
+    var info = opts.info || {};
+    var geDetail = opts.geDetail || {};
+    var shengshi = opts.shengshi || null;
+    var wxInfo = opts.wxInfo || {};
+
+    var level = (shengshi && shengshi.level) || "未判";
+    var xi = (shengshi && shengshi.xiYong) ? shengshi.xiYong.slice() : [];
+    var ji = (shengshi && shengshi.jiShen) ? shengshi.jiShen.slice() : [];
+    var xiCats = (shengshi && shengshi.xiCats) ? shengshi.xiCats.slice() : [];
+    var jiCats = (shengshi && shengshi.jiCats) ? shengshi.jiCats.slice() : [];
+
+    var isWeak = level === "身弱" || level === "偏弱";
+    var isStrong = level === "身强" || level === "偏强";
+    var strategy = isWeak
+      ? "先扶身（把日主养够）：多用喜用，少碰忌神；格局好处要等身力够了再兑现。"
+      : (isStrong
+        ? "能任事（担得起）：用喜用去发挥格局长处；别再叠比印把身推过旺。"
+        : "求平衡：缺什么补什么，忌神不过旺；格局与身势同看。");
+
+    var gePros0 = (geDetail.pros && geDetail.pros[0])
+      || ((info.pros && info.pros[0]) || "顺月令主气、用喜用神");
+    var liLine = pickGlanceLine(geDetail.pros, gePros0);
+    var shenLine = pickGlanceLine(
+      geDetail.cons,
+      (geDetail.cons && geDetail.cons[0]) || ((info.cons && info.cons[0]) || "防破格与忌神过旺")
+    );
+
+    var geName = geDetail.typeName || geKey;
+    var grade = geDetail.grade || "—";
+    var headline = dayGan + dayWx + " · " + level + " · " + geName;
+
+    return {
+      headline: headline,
+      situation: "",
+      oneLiner: info.mean || "",
+      strategy: strategy,
+      dayLabel: dayGan + (dayWx || ""),
+      dayWx: dayWx,
+      level: level,
+      levelTone: isWeak ? "弱" : (isStrong ? "强" : "中"),
+      geName: geName,
+      geCategory: geDetail.typeCategory || "",
+      grade: grade,
+      gradeTone: geDetail.gradeTone || "平",
+      gradeScore: geDetail.gradeScore,
+      xi: xi,
+      ji: ji,
+      xiCats: xiCats,
+      jiCats: jiCats,
+      li: liLine,
+      shen: shenLine,
+      wxSummary: wxInfo.summary || "",
+      focus: (GE_CATEGORY[geKey] && GE_CATEGORY[geKey].focus) || ""
+    };
+  }
+
   /**
    * @param {object} ec EightChar
    * @param {object} ctx { pillars, shensha, shengshi }
@@ -1013,11 +1405,21 @@
       benqi: benqi,
       benqiSS: benqiSS,
       monthGanSS: monthGanSS,
-      shengshi: shengshi
+      shengshi: shengshi,
+      pillars: pillars
     });
     var yiYi = buildYiYi(geKey, shengshi, dayWx);
     var sha = describeShensha(shenshaAll);
     var ssDetail = describeShiShen(ssInfo, shengshi, dayGan, dayWx);
+    var glance = buildGlance({
+      dayGan: dayGan,
+      dayWx: dayWx,
+      geKey: geKey,
+      info: info,
+      geDetail: geDetail,
+      shengshi: shengshi,
+      wxInfo: wxInfo
+    });
 
     var sections = [];
 
@@ -1065,7 +1467,8 @@
       yiYi: yiYi,
       shishen: ssInfo,
       shishenDetail: ssDetail,
-      shensha: sha
+      shensha: sha,
+      glance: glance
     };
   }
 

@@ -47,8 +47,9 @@
         <div class="form-row">
           <label class="form-label--wider">
             <span>出生地</span>
-            <input id="birthplace" type="text" list="city-list" value="长沙" placeholder="输入城市名或选择" />
+            <input id="birthplace" type="text" list="city-list" value="长沙" placeholder="输入城市名或选择" autocomplete="address-level2" />
             <datalist id="city-list"></datalist>
+            <p id="city-hint" class="field-hint" aria-live="polite"></p>
           </label>
           <label class="form-label--check">
             <input id="use-true-solar" type="checkbox" checked />
@@ -60,6 +61,10 @@
           <legend>历法</legend>
           <label class="cal-type-label"><input type="radio" name="calendar-type" value="solar" checked /> 阳历（公历）</label>
           <label class="cal-type-label"><input type="radio" name="calendar-type" value="lunar" /> 阴历（农历）</label>
+          <label id="leap-month-wrap" class="form-label--check cal-leap" hidden>
+            <input id="lunar-leap" type="checkbox" />
+            <span>闰月</span>
+          </label>
         </fieldset>
 
         <div class="form-grid">
@@ -72,15 +77,39 @@
         <button type="button" id="btn-paipan" class="btn-primary">开始排盘</button>
       </form>
 
+      <section class="case-panel" aria-label="案例">
+        <div class="case-panel__head">
+          <h2 class="panel__title panel__title--sub">案例（本地保存）</h2>
+          <div class="case-panel__ops">
+            <button type="button" id="btn-case-export" class="btn-ghost">导出</button>
+            <button type="button" id="btn-case-import" class="btn-ghost">导入</button>
+            <input id="case-import-file" type="file" accept="application/json,.json" hidden />
+          </div>
+        </div>
+        <ul id="case-list" class="case-list"></ul>
+      </section>
     </aside>
 
     <section class="panel panel--result" id="paipan">
       <p id="result-empty" class="result-empty">填写信息后点击「开始排盘」</p>
       <div id="result-panel" hidden>
         <header class="result-head">
-          <h2>八字排盘</h2>
+          <div class="result-head__top">
+            <h2>八字排盘</h2>
+            <div class="result-actions" id="result-actions">
+              <button type="button" id="btn-share" class="btn-secondary" title="复制可打开同一盘的链接">分享链接</button>
+              <button type="button" id="btn-save-img" class="btn-secondary" title="将排盘结果保存为图片">保存图片</button>
+            </div>
+          </div>
           <p id="meta-line" class="meta-line"></p>
           <div id="extra-meta" class="extra-meta"></div>
+          <nav class="consult-jump" id="consult-jump" aria-label="面诊跳转">
+            <a href="#shengshi-block">身势</a>
+            <a href="#dayun-block">大运</a>
+            <a href="#relations-block">刑冲</a>
+            <a href="#notes-block">批注</a>
+            <a href="#calendar">案例</a>
+          </nav>
         </header>
 
         <div id="pillar-cards" class="pillar-cards"></div>
@@ -98,6 +127,14 @@
             <div id="shengshi-body" class="analysis-block__body"></div>
           </article>
 
+          <article class="analysis-block" id="geju-block" data-open="false">
+            <button type="button" class="analysis-block__head" aria-expanded="false" aria-controls="geju-panel">
+              <h3 class="analysis-block__title">命格综评</h3>
+              <span class="analysis-block__chevron" aria-hidden="true"></span>
+            </button>
+            <div id="geju-panel" class="analysis-block__body geju-panel"></div>
+          </article>
+
           <article class="analysis-block" id="dayun-block" data-open="true">
             <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="dayun-body">
               <h3 class="analysis-block__title">大运流年</h3>
@@ -106,20 +143,40 @@
             <div id="dayun-body" class="analysis-block__body"></div>
           </article>
 
-          <article class="analysis-block" id="geju-block" data-open="true">
-            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="geju-panel">
-              <h3 class="analysis-block__title">命格综评</h3>
+          <article class="analysis-block" id="relations-block" data-open="true">
+            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="relations-body">
+              <h3 class="analysis-block__title">刑冲合害</h3>
               <span class="analysis-block__chevron" aria-hidden="true"></span>
             </button>
-            <div id="geju-panel" class="analysis-block__body geju-panel"></div>
+            <div id="relations-body" class="analysis-block__body"></div>
           </article>
 
-          <article class="analysis-block" id="chenggu-block" data-open="true">
-            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="chenggu-body">
+          <article class="analysis-block" id="chenggu-block" data-open="false">
+            <button type="button" class="analysis-block__head" aria-expanded="false" aria-controls="chenggu-body">
               <h3 class="analysis-block__title">称骨算命</h3>
               <span class="analysis-block__chevron" aria-hidden="true"></span>
             </button>
             <div id="chenggu-body" class="analysis-block__body chenggu-body"></div>
+          </article>
+
+          <article class="analysis-block" id="notes-block" data-open="true">
+            <button type="button" class="analysis-block__head" aria-expanded="true" aria-controls="notes-body">
+              <h3 class="analysis-block__title">批注</h3>
+              <span class="analysis-block__chevron" aria-hidden="true"></span>
+            </button>
+            <div id="notes-body" class="analysis-block__body notes-body">
+              <div class="notes-form">
+                <label>称呼<input id="case-name" type="text" maxlength="40" placeholder="客户称呼" autocomplete="name" /></label>
+                <label>问事<input id="case-question" type="text" maxlength="80" placeholder="事业 / 感情 / 财运…" /></label>
+                <label class="notes-form__full">批注<textarea id="case-notes" rows="5" maxlength="4000" placeholder="当面要点、宜忌提醒、下次跟进…"></textarea></label>
+                <div class="notes-actions">
+                  <button type="button" id="btn-case-save" class="btn-secondary">存为新案例</button>
+                  <button type="button" id="btn-case-update" class="btn-secondary" hidden>更新当前案例</button>
+                  <button type="button" id="btn-case-clear" class="btn-ghost">清空批注</button>
+                </div>
+                <p id="case-status" class="case-status" aria-live="polite"></p>
+              </div>
+            </div>
           </article>
         </div>
       </div>
@@ -127,15 +184,16 @@
   </main>
 
   <footer class="site-footer" id="about">
-    <p>历法与四柱计算基于节气换月；真太阳时基于出生地经度与均时差校准；晚子时（23点后）日柱用当日、时柱用次日。</p>
-    <p>身势强弱按传统旺衰（得令/得地/得势/得生）与扶抑取用；神煞、格局、称骨为传统规则归纳，仅供文化学习参考，非命理咨询。</p>
+    <p>节气换月 · 真太阳时可选 · 晚子时日柱当日、时柱次日。身势/神煞/格局/称骨仅供文化学习参考。</p>
     <p>最终解释权归荣恩个人所有。</p>
   </footer>
 
   <script src="lib/lunar.js"></script>
+  <script src="js/wx-data.js"></script>
   <script src="js/cities.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/shensha.js"></script>
+  <script src="js/relations.js"></script>
   <script src="js/geju.js"></script>
   <script src="js/shengshi.js"></script>
   <script src="js/chenggu.js"></script>

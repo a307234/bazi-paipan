@@ -2,7 +2,8 @@
  * 得令 45% · 得地 30% · 得势 20% · 得生 10%
  */
 (function (root) {
-  var GAN_WX = {
+  var _wx = root.BaziWxData || {};
+  var GAN_WX = _wx.GAN_WX || {
     甲: "木", 乙: "木", 丙: "火", 丁: "火", 戊: "土", 己: "土",
     庚: "金", 辛: "金", 壬: "水", 癸: "水"
   };
@@ -38,7 +39,7 @@
   var WO_KE = { 木: "土", 火: "金", 土: "水", 金: "木", 水: "火" };
   var KE_WO = { 木: "金", 火: "水", 土: "木", 金: "火", 水: "土" };
 
-  var WX_ORDER = ["木", "火", "土", "金", "水"];
+  var WX_ORDER = (_wx.WX_ORDER && _wx.WX_ORDER.slice()) || ["木", "火", "土", "金", "水"];
 
   // 权重：得令取 40–50% 中值
   var W_LING = 0.45;
@@ -333,22 +334,12 @@
     ];
 
     var lines = [];
-    lines.push(
-      "按得令" + Math.round(W_LING * 100) + "%、得地" + Math.round(W_DI * 100) +
-      "%、得势" + Math.round(W_SHI * 100) + "%、得生" + Math.round(W_SHENG * 100) +
-      "% 加权，综合 " + total + " →「" + level + "」。"
-    );
-    factors.forEach(function (f) {
-      lines.push(
-        f.name + " " + Math.round(f.score) + "分（权" + Math.round(f.weight * 100) + "%）：" + f.detail
-      );
-    });
     if (level === "身强" || level === "偏强") {
-      lines.push("身偏旺，宜克泄耗：喜" + yong.xiYong.join("、") + "，忌" + yong.jiShen.join("、") + "。");
+      lines.push("偏旺，宜泄耗：喜" + yong.xiYong.join("、") + "，忌" + yong.jiShen.join("、"));
     } else if (level === "身弱" || level === "偏弱") {
-      lines.push("身偏弱，宜生扶：喜" + yong.xiYong.join("、") + "，忌" + yong.jiShen.join("、") + "克耗。");
+      lines.push("偏弱，宜生扶：喜" + yong.xiYong.join("、") + "，忌" + yong.jiShen.join("、"));
     } else {
-      lines.push("身势中和，宜平衡：喜" + yong.xiYong.join("、") + "，慎" + yong.jiShen.join("、") + "过旺。");
+      lines.push("中和，宜平衡：喜" + yong.xiYong.join("、") + "，慎" + yong.jiShen.join("、") + "过旺");
     }
 
     return {

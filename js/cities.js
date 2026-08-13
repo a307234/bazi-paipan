@@ -367,16 +367,42 @@
     { n:"澳门", lng:113.55, lat:22.19, p:"澳门" }
   ];
 
-  function findCity(name) {
+  function findExact(name) {
     if (!name) return null;
     for (var i = 0; i < CITIES.length; i++) {
-      if (CITIES[i].n === name || CITIES[i].n.indexOf(name) === 0) return CITIES[i];
+      if (CITIES[i].n === name) return CITIES[i];
     }
+    return null;
+  }
+
+  function findMatches(name, limit) {
+    if (!name) return [];
+    limit = limit || 8;
+    var exact = [];
+    var prefix = [];
+    var i, c;
+    for (i = 0; i < CITIES.length; i++) {
+      c = CITIES[i];
+      if (c.n === name) exact.push(c);
+      else if (c.n.indexOf(name) === 0) prefix.push(c);
+    }
+    return exact.concat(prefix).slice(0, limit);
+  }
+
+  /** 优先精确匹配；仅当唯一前缀命中时才返回，避免「长」误绑「长春」 */
+  function findCity(name) {
+    if (!name) return null;
+    var exact = findExact(name);
+    if (exact) return exact;
+    var matches = findMatches(name, 5);
+    if (matches.length === 1) return matches[0];
     return null;
   }
 
   root.BaziCities = {
     CITIES: CITIES,
-    find: findCity
+    find: findCity,
+    findExact: findExact,
+    findMatches: findMatches
   };
 })(typeof window !== "undefined" ? window : global);

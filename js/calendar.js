@@ -82,10 +82,21 @@
     return SHICHEN[11];
   }
 
+  function leapMonthOfYear(year) {
+    try {
+      if (typeof LunarYear === "undefined") return 0;
+      var y = LunarYear.fromYear(year);
+      return y && y.getLeapMonth ? (y.getLeapMonth() || 0) : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   root.BaziCalendar = {
     buildMonth,
     SHICHEN,
     hourToShichen,
     WEEK,
+    leapMonthOfYear,
   };
 })(typeof window !== "undefined" ? window : global);
