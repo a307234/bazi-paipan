@@ -1,6 +1,13 @@
 [build]
   publish = "."
 
+# 微信等平台根目录校验文件：勿被 SPA 重写吞掉
+[[redirects]]
+  from = "/1493cbc04e2a1b289540f21fff0c9345.txt"
+  to = "/1493cbc04e2a1b289540f21fff0c9345.txt"
+  status = 200
+  force = false
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
