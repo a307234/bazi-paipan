@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="专业八字排盘 — 四柱、十神、藏干、纳音、神煞、格局、称骨、大运流年、身势喜用" />
+  <meta name="description" content="专业八字排盘 — 四柱、十神、藏干、纳音、神煞、格局、天罡称骨、大运流年、身势喜用" />
   <title>荣恩的周易学堂</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='none' stroke='%23333' stroke-width='2'/><path d='M50 2A48 48 0 0 1 50 98A24 24 0 0 1 50 50A24 24 0 0 0 50 2Z' fill='%23fff'/><path d='M50 2A48 48 0 0 0 50 98A24 24 0 0 0 50 50A24 24 0 0 1 50 2Z' fill='%23111'/><circle cx='50' cy='26' r='7' fill='%23111'/><circle cx='50' cy='74' r='7' fill='%23fff'/></svg>" />
   <link rel="stylesheet" href="css/style.css" />
@@ -78,14 +78,7 @@
       </form>
 
       <section class="case-panel" aria-label="案例">
-        <div class="case-panel__head">
-          <h2 class="panel__title panel__title--sub">案例（本地保存）</h2>
-          <div class="case-panel__ops">
-            <button type="button" id="btn-case-export" class="btn-ghost">导出</button>
-            <button type="button" id="btn-case-import" class="btn-ghost">导入</button>
-            <input id="case-import-file" type="file" accept="application/json,.json" hidden />
-          </div>
-        </div>
+        <h2 class="panel__title panel__title--sub">案例（本地保存）</h2>
         <ul id="case-list" class="case-list"></ul>
       </section>
     </aside>
@@ -94,13 +87,7 @@
       <p id="result-empty" class="result-empty">填写信息后点击「开始排盘」</p>
       <div id="result-panel" hidden>
         <header class="result-head">
-          <div class="result-head__top">
-            <h2>八字排盘</h2>
-            <div class="result-actions" id="result-actions">
-              <button type="button" id="btn-share" class="btn-secondary" title="复制可打开同一盘的链接">分享链接</button>
-              <button type="button" id="btn-save-img" class="btn-secondary" title="将排盘结果保存为图片">保存图片</button>
-            </div>
-          </div>
+          <h2>八字排盘</h2>
           <p id="meta-line" class="meta-line"></p>
           <div id="extra-meta" class="extra-meta"></div>
           <nav class="consult-jump" id="consult-jump" aria-label="面诊跳转">
@@ -153,7 +140,7 @@
 
           <article class="analysis-block" id="chenggu-block" data-open="false">
             <button type="button" class="analysis-block__head" aria-expanded="false" aria-controls="chenggu-body">
-              <h3 class="analysis-block__title">称骨算命</h3>
+              <h3 class="analysis-block__title">天罡称骨</h3>
               <span class="analysis-block__chevron" aria-hidden="true"></span>
             </button>
             <div id="chenggu-body" class="analysis-block__body chenggu-body"></div>
@@ -184,7 +171,7 @@
   </main>
 
   <footer class="site-footer" id="about">
-    <p>节气换月 · 真太阳时可选 · 晚子时日柱当日、时柱次日。身势/神煞/格局/称骨仅供文化学习参考。</p>
+    <p>节气换月 · 真太阳时可选 · 晚子时日柱当日、时柱次日。身势/神煞/格局/天罡称骨仅供文化学习参考。</p>
     <p>最终解释权归荣恩个人所有。</p>
   </footer>
 

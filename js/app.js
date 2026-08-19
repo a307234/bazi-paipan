@@ -1367,65 +1367,11 @@
     showToast("案例已删除");
   }
 
-  function exportCases() {
-    var list = loadCases();
-    var blob = new Blob([JSON.stringify({ version: 1, exportedAt: Date.now(), cases: list }, null, 2)], {
-      type: "application/json"
-    });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "bazi-cases-" + new Date().toISOString().slice(0, 10) + ".json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-    showToast("已导出 " + list.length + " 条案例");
-  }
-
-  function importCasesFromFile(file) {
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var data = JSON.parse(String(reader.result || ""));
-        var incoming = Array.isArray(data) ? data : (data && data.cases);
-        if (!Array.isArray(incoming)) throw new Error("格式不对");
-        var list = loadCases();
-        var byId = {};
-        list.forEach(function (c) { byId[c.id] = c; });
-        var added = 0;
-        var updated = 0;
-        incoming.forEach(function (c) {
-          if (!c || !c.birth) return;
-          if (!c.id) c.id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-          if (byId[c.id]) {
-            byId[c.id] = c;
-            updated++;
-          } else {
-            byId[c.id] = c;
-            added++;
-          }
-        });
-        var next = Object.keys(byId).map(function (k) { return byId[k]; });
-        if (!saveCases(next)) return;
-        renderCaseList();
-        showToast("导入完成：新增" + added + " · 更新" + updated);
-      } catch (e) {
-        console.error(e);
-        showToast("导入失败，请检查 JSON 文件");
-      }
-    };
-    reader.readAsText(file, "utf-8");
-  }
-
   function bindCasePanel() {
     var saveBtn = $("#btn-case-save");
     var updBtn = $("#btn-case-update");
     var clearBtn = $("#btn-case-clear");
     var listEl = $("#case-list");
-    var exportBtn = $("#btn-case-export");
-    var importBtn = $("#btn-case-import");
-    var importFile = $("#case-import-file");
     if (saveBtn && !saveBtn._bound) {
       saveBtn._bound = true;
       saveBtn.addEventListener("click", saveNewCase);
@@ -1444,19 +1390,6 @@
         syncCaseButtons();
         setCaseStatus("批注已清空");
         renderCaseList();
-      });
-    }
-    if (exportBtn && !exportBtn._bound) {
-      exportBtn._bound = true;
-      exportBtn.addEventListener("click", exportCases);
-    }
-    if (importBtn && importFile && !importBtn._bound) {
-      importBtn._bound = true;
-      importBtn.addEventListener("click", function () { importFile.click(); });
-      importFile.addEventListener("change", function () {
-        var f = importFile.files && importFile.files[0];
-        importCasesFromFile(f);
-        importFile.value = "";
       });
     }
     if (listEl && !listEl._bound) {
@@ -1489,302 +1422,6 @@
     markNotesBaseline();
   }
 
-  function parseShareParams() {
-    var raw = "";
-    if (location.search && location.search.length > 1) raw = location.search.slice(1);
-    else if (location.hash && location.hash.indexOf("=") > 0) {
-      raw = location.hash.replace(/^#\/?/, "");
-      if (raw.charAt(0) === "?") raw = raw.slice(1);
-    }
-    if (!raw) return null;
-    var map = {};
-    raw.split("&").forEach(function (pair) {
-      var i = pair.indexOf("=");
-      if (i < 0) return;
-      var k = decodeURIComponent(pair.slice(0, i));
-      var v = decodeURIComponent(pair.slice(i + 1).replace(/\+/g, " "));
-      map[k] = v;
-    });
-    if (!map.y && !map.year) return null;
-    var year = parseInt(map.y || map.year, 10);
-    var month = parseInt(map.m || map.month, 10);
-    var day = parseInt(map.d || map.day, 10);
-    if (!(year >= 1900 && year <= 2100) || !(month >= 1 && month <= 12) || !(day >= 1 && day <= 31)) {
-      return null;
-    }
-    var hour = parseInt(map.h != null ? map.h : (map.hour != null ? map.hour : "12"), 10);
-    var minute = parseInt(map.mi != null ? map.mi : (map.minute != null ? map.minute : "0"), 10);
-    if (isNaN(hour) || hour < 0 || hour > 23) hour = 12;
-    if (isNaN(minute) || minute < 0 || minute > 59) minute = 0;
-    var g = parseInt(map.g != null ? map.g : (map.gender != null ? map.gender : "1"), 10);
-    var cal = map.cal || map.calendarType || "s";
-    if (cal === "lunar" || cal === "l" || cal === "阴") cal = "lunar";
-    else cal = "solar";
-    var tsRaw = map.ts != null ? map.ts : map.trueSolar;
-    var useTrueSolar = !(tsRaw === "0" || tsRaw === "false" || tsRaw === "off");
-    var leapRaw = map.leap != null ? map.leap : map.lunarLeap;
-    return {
-      year: year,
-      month: month,
-      day: day,
-      hour: hour,
-      minute: minute,
-      gender: g === 0 ? 0 : 1,
-      calendarType: cal,
-      lunarLeap: leapRaw === "1" || leapRaw === "true",
-      birthplace: (map.city || map.p || map.birthplace || "长沙").trim() || "长沙",
-      useTrueSolar: useTrueSolar,
-      name: (map.n || map.name || "").trim()
-    };
-  }
-
-  function applyShareParams(p) {
-    if (!p) return false;
-    state.birth = {
-      year: p.year,
-      month: p.month,
-      day: p.day,
-      hour: p.hour,
-      minute: p.minute,
-      gender: p.gender
-    };
-    state.calendarType = p.calendarType;
-    state.lunarLeap = !!p.lunarLeap;
-    state.birthplace = p.birthplace;
-    state.useTrueSolar = !!p.useTrueSolar;
-    syncInputsFromState();
-    if (p.name && $("#case-name")) $("#case-name").value = p.name;
-    markNotesBaseline();
-    return true;
-  }
-
-  function buildShareUrl(opts) {
-    opts = opts || {};
-    readInputs();
-    var b = state.birth;
-    var parts = [
-      "y=" + b.year,
-      "m=" + b.month,
-      "d=" + b.day,
-      "h=" + b.hour,
-      "mi=" + b.minute,
-      "g=" + b.gender,
-      "cal=" + (state.calendarType === "lunar" ? "l" : "s"),
-      "ts=" + (state.useTrueSolar ? "1" : "0"),
-      "city=" + encodeURIComponent(state.birthplace || "")
-    ];
-    if (state.calendarType === "lunar" && state.lunarLeap) parts.push("leap=1");
-    if (opts.includeName) {
-      var name = ($("#case-name") && $("#case-name").value.trim()) || "";
-      if (name) parts.push("n=" + encodeURIComponent(name));
-    }
-    return location.origin + location.pathname + "?" + parts.join("&");
-  }
-
-  function syncShareUrl() {
-    try {
-      if (history.replaceState) history.replaceState(null, "", buildShareUrl({ includeName: false }));
-    } catch (e) { /* ignore */ }
-  }
-
-  function copyShareLink() {
-    if (!state.result) {
-      showToast("请先排盘");
-      return;
-    }
-    var url = buildShareUrl({ includeName: true });
-    syncShareUrl();
-    function ok() { showToast("链接已复制，可分享打开同一盘"); }
-    function fail() { window.prompt("复制以下链接：", url); }
-
-    if (navigator.share) {
-      navigator.share({ title: "八字排盘", text: "荣恩的周易学堂 · 排盘链接", url: url })
-        .then(function () { showToast("已调起系统分享"); })
-        .catch(function () {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url).then(ok).catch(fail);
-          } else fail();
-        });
-      return;
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(ok).catch(fail);
-    } else {
-      try {
-        var ta = document.createElement("textarea");
-        ta.value = url;
-        ta.setAttribute("readonly", "");
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        var done = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (done) ok();
-        else fail();
-      } catch (e) {
-        fail();
-      }
-    }
-  }
-
-  function loadHtml2Canvas(cb) {
-    if (typeof html2canvas === "function") {
-      cb(null);
-      return;
-    }
-    var s = document.createElement("script");
-    s.src = "lib/html2canvas.min.js";
-    s.onload = function () { cb(typeof html2canvas === "function" ? null : new Error("bad")); };
-    s.onerror = function () { cb(new Error("load")); };
-    document.head.appendChild(s);
-  }
-
-  function deliverPngBlob(blob, filename) {
-    try {
-      var file = new File([blob], filename, { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: filename, text: "八字排盘结果" })
-          .then(function () { showToast("已调起分享/保存"); })
-          .catch(function () { fallbackDownload(blob, filename); });
-        return;
-      }
-    } catch (e) { /* File/share unsupported */ }
-    fallbackDownload(blob, filename);
-  }
-
-  function fallbackDownload(blob, filename) {
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement("a");
-    link.download = filename;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isIOS) {
-      setTimeout(function () { window.open(url, "_blank"); }, 200);
-      showToast("若未下载，请在新页面长按图片保存");
-    } else {
-      showToast("图片已保存");
-    }
-    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
-  }
-
-  function dataURLtoBlob(dataUrl) {
-    var parts = dataUrl.split(",");
-    var mime = parts[0].match(/:(.*?);/)[1];
-    var bin = atob(parts[1]);
-    var arr = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return new Blob([arr], { type: mime });
-  }
-
-  function saveResultImage() {
-    if (!state.result) {
-      showToast("请先排盘");
-      return;
-    }
-    var panel = $("#result-panel");
-    if (!panel || panel.hidden) {
-      showToast("暂无排盘结果");
-      return;
-    }
-
-    var btn = $("#btn-save-img");
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "生成中…";
-    }
-    showToast("正在生成图片…", 1800);
-
-    loadHtml2Canvas(function (err) {
-      if (err || typeof html2canvas !== "function") {
-        if (btn) { btn.disabled = false; btn.textContent = "保存图片"; }
-        showToast("图片组件加载失败");
-        return;
-      }
-
-      var coreIds = { "shengshi-block": 1, "dayun-block": 1, "relations-block": 1 };
-      var opened = [];
-      Object.keys(coreIds).forEach(function (id) {
-        var block = document.getElementById(id);
-        if (block && block.getAttribute("data-open") === "false") {
-          opened.push(block);
-          block.setAttribute("data-open", "true");
-          var head = $(".analysis-block__head", block);
-          if (head) head.setAttribute("aria-expanded", "true");
-        }
-      });
-      ["dayun-body", "relations-body"].forEach(function (id) {
-        var root = document.getElementById(id);
-        if (!root) return;
-        $$("details", root).forEach(function (d) {
-          if (!d.open) {
-            opened.push(d);
-            d.open = true;
-          }
-        });
-      });
-
-      var bg = getComputedStyle(document.body).backgroundColor || "#1a1a1a";
-      setTimeout(function () {
-        html2canvas(panel, {
-          backgroundColor: bg,
-          scale: Math.min(2, window.devicePixelRatio || 1.5),
-          useCORS: true,
-          logging: false,
-          windowWidth: panel.scrollWidth,
-          windowHeight: panel.scrollHeight,
-          ignoreElements: function (el) {
-            if (!el) return false;
-            if (el.id === "notes-block" || el.id === "geju-block" || el.id === "chenggu-block") return true;
-            if (el.id === "consult-jump") return true;
-            if (el.classList && el.classList.contains("result-actions")) return true;
-            return false;
-          }
-        }).then(function (canvas) {
-          opened.forEach(function (el) {
-            if (el.classList && el.classList.contains("analysis-block")) {
-              el.setAttribute("data-open", "false");
-              var head = $(".analysis-block__head", el);
-              if (head) head.setAttribute("aria-expanded", "false");
-            } else if (el.tagName === "DETAILS") {
-              el.open = false;
-            }
-          });
-          if (btn) { btn.disabled = false; btn.textContent = "保存图片"; }
-          var b = state.birth;
-          var name = ($("#case-name") && $("#case-name").value.trim()) || "";
-          var filename = "八字_" + b.year + "-" + pad(b.month) + "-" + pad(b.day) +
-            (name ? "_" + name.replace(/[\\/:*?"<>|]+/g, "") : "") + ".png";
-          if (canvas.toBlob) {
-            canvas.toBlob(function (blob) {
-              if (!blob) {
-                showToast("生成图片失败");
-                return;
-              }
-              deliverPngBlob(blob, filename);
-            }, "image/png");
-          } else {
-            fallbackDownload(dataURLtoBlob(canvas.toDataURL("image/png")), filename);
-          }
-        }).catch(function (e2) {
-          console.error(e2);
-          opened.forEach(function (el) {
-            if (el.classList && el.classList.contains("analysis-block")) {
-              el.setAttribute("data-open", "false");
-            } else if (el.tagName === "DETAILS") {
-              el.open = false;
-            }
-          });
-          if (btn) { btn.disabled = false; btn.textContent = "保存图片"; }
-          showToast("生成图片失败，请重试");
-        });
-      }, 80);
-    });
-  }
-
   function doPaipan() {
     readInputs();
     if (state.useTrueSolar && !state.cityMatched) {
@@ -1807,7 +1444,6 @@
       state.result = result;
       state.dayunView = null;
       saveBirthPrefs();
-      syncShareUrl();
       renderBaziTable(result);
       renderShengshi(result);
       renderDaYun(result);
@@ -1853,11 +1489,8 @@
     });
 
     var now = new Date();
-    var share = parseShareParams();
     var hasSaved = loadBirthPrefs();
-    if (share) {
-      applyShareParams(share);
-    } else if (!hasSaved) {
+    if (!hasSaved) {
       state.birth.year = now.getFullYear() - 35;
       state.birth.month = now.getMonth() + 1;
       state.birth.day = now.getDate();
@@ -1865,7 +1498,7 @@
     }
     if (BaziCities && BaziCities.find) {
       var defCity = BaziCities.find(state.birthplace);
-      if (!defCity && !share) defCity = BaziCities.find("长沙");
+      if (!defCity) defCity = BaziCities.find("长沙");
       if (defCity) {
         state.birthplaceData = {
           name: defCity.n || defCity.name || state.birthplace,
@@ -1886,8 +1519,6 @@
     bindCasePanel();
 
     $("#btn-paipan").addEventListener("click", doPaipan);
-    if ($("#btn-share")) $("#btn-share").addEventListener("click", copyShareLink);
-    if ($("#btn-save-img")) $("#btn-save-img").addEventListener("click", saveResultImage);
 
     ["birth-year", "birth-month", "birth-day", "birth-hour", "birth-minute"].forEach(function (id) {
       $("#" + id).addEventListener("input", function () {
@@ -2003,10 +1634,6 @@
     // 分(2位) → 按钮（聚焦按钮，不自动排盘）
     bindEnter(minEl, btnEl);
     bindAutoJump(minEl, 2, btnEl);
-
-    if (share) {
-      doPaipan();
-    }
   }
 
   if (document.readyState === "loading") {

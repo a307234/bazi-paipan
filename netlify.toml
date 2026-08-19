@@ -3,8 +3,8 @@
 
 # 微信等平台根目录校验文件：勿被 SPA 重写吞掉
 [[redirects]]
-  from = "/1493cbc04e2a1b289540f21fff0c9345.txt"
-  to = "/1493cbc04e2a1b289540f21fff0c9345.txt"
+  from = "/8c6c64a4c2d2636581190bed420a88d9.txt"
+  to = "/8c6c64a4c2d2636581190bed420a88d9.txt"
   status = 200
   force = false
 
